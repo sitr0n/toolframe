@@ -20,20 +20,39 @@ Stopwatch::Stopwatch(QWidget *parent) :
     connect(&m_ticker, SIGNAL(timeout()), this, SLOT(update()));
 }
 
-void Stopwatch::start(int hours, int minutes, int seconds)
+void Stopwatch::set(int duration_seconds)
 {
     m_duration_seconds = 0;
     m_emit_signal = false;
     m_running = false;
-    if (hours || minutes || seconds) {
-        m_duration_seconds += hours * SEC_PER_HOUR;
-        m_duration_seconds += minutes * SEC_PER_MIN;
-        m_duration_seconds += seconds;
+    if (0 < duration_seconds) {
+        m_duration_seconds = duration_seconds;
         m_emit_signal = true;
-        m_running = true;
     }
+    update();
+}
+
+void Stopwatch::set(QString timeout)
+{
+
+}
+
+void Stopwatch::start()
+{
     m_timer.start();
     m_ticker.start();
+    m_running = true;
+}
+
+void Stopwatch::start(int hours, int minutes, int seconds)
+{
+    int duration_seconds;
+    duration_seconds += hours * SEC_PER_HOUR;
+    duration_seconds += minutes * SEC_PER_MIN;
+    duration_seconds += seconds;
+
+    set(duration_seconds);
+    start();
 }
 
 void Stopwatch::stop()

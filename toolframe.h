@@ -1,18 +1,16 @@
 #ifndef TOOLFRAME_H
 #define TOOLFRAME_H
 
-#include "stopwatch.h"
-#include <QWidget>
-#include <QTimer>
 #include <QMdiSubWindow>
+#include <QWidget>
+#include <QPlainTextEdit>
+#include <QTextStream>
+#include "stopwatch.h"
+#include <QTimer>
 #include <QPushButton>
 #include <QSpacerItem>
 #include "statusbitwidget.h"
-
-#include <QPlainTextEdit>
-#include <QTextStream>
 #include <QLabel>
-
 
 class SideBar;
 class EventLogger;
@@ -37,14 +35,18 @@ protected slots:
     void stopped();
     void error();
     void reading(int value);
+
     void resize();
+    void request_settings();
 
 private slots:
     void show_content();
     void show_settings();
     void toggle_eventlog();
+    void load_settings();
 
 protected:
+    //void setTitle(QString title);
     QTextStream &output() const;
 
 private:
@@ -53,10 +55,11 @@ private:
 
     SideBar *m_sidebar;
     QWidget *m_content;
-    QWidget *m_timer;
+    Stopwatch *m_timer;
     QWidget *m_settings;
-    QWidget *m_toolsettings;
-    QWidget *m_eventlog; // EventLogger ptr instead??
+    QLabel *m_settings_header;
+    ToolSettings *m_toolsettings;
+    EventLogger *m_eventlog; // EventLogger ptr instead??
     QWidget *m_wrapper;
 };
 
@@ -103,20 +106,38 @@ private:
 #include <QLineEdit>
 #include <QSpinBox>
 #include <QCheckBox>
+#include <QSettings>
 
 class ToolSettings : public QWidget
 {
     Q_OBJECT
 public:
     explicit ToolSettings(QWidget *parent = 0);
+    void setContext(QString context);
+
+signals:
+    void first_time_setup();
+    void update_frame();
 
 private slots:
-    void toggle_stopwatch();
+    void update_form();
+    void set_timeout();
 
 private:
-    QLineEdit *pressure_edit, *address_edit;
-    QCheckBox *stopwatch_enable;
-    QSpinBox *timeout_delay_selector;
+    QString m_context;
+
+    QFrame *timeout_line;
+    QCheckBox *timeout_checker;
+    QLineEdit *timeout_edit;
+    QFrame *graph_line;
+    QCheckBox *graph_checker;
+    QLineEdit *graph_sample_edit;
+    QFrame *eventlog_line;
+    QCheckBox *eventlog_checker;
+    QLineEdit *eventlog_edit;
+
+    void loadSettings();
+    void saveSettings();
 };
 
 #endif // TOOLFRAME_H

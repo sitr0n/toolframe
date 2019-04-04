@@ -11,6 +11,9 @@ class Stopwatch : public QLCDNumber
     Q_OBJECT
 public:
     explicit Stopwatch(QWidget *parent = 0);
+    void set(int duration_seconds);
+    void set(QString timeout);
+    void start();
     void start(int hours, int minutes, int seconds);
     void stop();
 
