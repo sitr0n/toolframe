@@ -12,47 +12,95 @@
 ToolFrame::ToolFrame(QWidget *parent) :
     QMdiSubWindow(parent),
     eventlog(new QTextStream(&logbuffer)),
-    wrapper(new MainWrapper(*eventlog, this))
+    m_sidebar(new SideBar(this)),
+    m_content(new QWidget(this)),
+    m_timer(new Stopwatch(this)),
+    m_settings(new QWidget(this)),
+    m_toolsettings(new ToolSettings(this)),
+    m_eventlog(new EventLogger(*eventlog, this)),
+    m_wrapper(new QWidget(this))
 {
-    setWidget(wrapper);
+    m_content->setLayout(new QVBoxLayout);
+    m_content->layout()->setMargin(0);
+    m_settings->setLayout(new QVBoxLayout);
+    m_settings->layout()->addWidget(m_toolsettings);
+    m_settings->setVisible(false);
+    m_wrapper->setLayout(new QHBoxLayout);
+    m_wrapper->layout()->setMargin(0);
+    setWidget(m_wrapper);
 
-    connect(wrapper, SIGNAL(resized()), this, SLOT(resize()));
-    connect(wrapper, SIGNAL(timeout()), this, SIGNAL(timeout()));
+    m_wrapper->layout()->addWidget(m_sidebar);
+    m_wrapper->layout()->addWidget(m_content);
+    m_wrapper->layout()->addWidget(m_settings);
+    m_wrapper->layout()->addWidget(m_eventlog);
+
+    m_content->layout()->addWidget(m_timer);
+    m_timer->setFixedHeight(BUTTON_SIZE);
+    m_timer->setMinimumWidth(4*BUTTON_SIZE);
+    m_timer->setSizePolicy(QSizePolicy::Minimum, QSizePolicy::Fixed);
+
+    connect(m_sidebar, SIGNAL(main_pushed()), this, SLOT(show_content()));
+    connect(m_sidebar, SIGNAL(settings_pushed()), this, SLOT(show_settings()));
+    connect(m_sidebar, SIGNAL(eventlog_pushed()), this, SLOT(toggle_eventlog()));
     resize();
 }
 
 void ToolFrame::setContent(QWidget *w)
 {
-    wrapper->setCentralWidget(w);
+    w->setSizePolicy(QSizePolicy::MinimumExpanding, QSizePolicy::MinimumExpanding);
+    QLayout *layout = m_content->layout();
+    layout->addWidget(w);
+    layout->addItem(layout->takeAt(layout->indexOf(m_timer))); // Move stopwatch to the bottom of the layout
 }
 
 void ToolFrame::setSettings(QWidget *w)
 {
+    Q_UNUSED(w);
+}
 
+void ToolFrame::enable_timer(bool enable)
+{
+    if (enable) {
+        if (m_timer == NULL) {
+            m_timer = new Stopwatch(this);
+            layout()->addWidget(m_timer);
+        } else {
+            m_timer->setVisible(true);
+        }
+    } else {
+        if (m_timer != NULL) {
+            layout()->takeAt(layout()->indexOf(m_timer));
+            delete m_timer;
+        } else {
+            m_timer->setVisible(false);
+        }
+    }
 }
 
 void ToolFrame::started()
 {
-    wrapper->started();
+    output() << "wat";
+    //wrapper->started();
 }
 
 void ToolFrame::running()
 {
-    wrapper->running();
+    m_sidebar->status_running();
 }
 
 void ToolFrame::stopped()
 {
-    wrapper->stopped();
+    m_sidebar->status_stopped();
 }
 
 void ToolFrame::error()
 {
-    wrapper->error();
+    m_sidebar->status_error();
 }
 
 void ToolFrame::reading(int value)
 {
+    Q_UNUSED(value);
     // log value in graph class
 }
 
@@ -62,6 +110,35 @@ void ToolFrame::resize()
         QApplication::processEvents(QEventLoop::ExcludeUserInputEvents);
         QMdiSubWindow::resize(sizeHint());
     }
+}
+
+void ToolFrame::show_content()
+{
+    if (m_settings->isVisible()) {
+        m_settings->setVisible(false);
+    }
+    m_content->setVisible(true);
+    emit resize();
+    emit start();
+}
+
+void ToolFrame::show_settings()
+{
+    if (m_content->isVisible()) {
+        m_content->setVisible(false);
+    }
+    m_settings->setVisible(true);
+    emit resize();
+}
+
+void ToolFrame::toggle_eventlog()
+{
+    if (m_eventlog->isVisible()) {
+        m_eventlog->setVisible(false);
+    } else {
+        m_eventlog->setVisible(true);
+    }
+    emit resize();
 }
 
 QTextStream &ToolFrame::output() const
@@ -128,138 +205,6 @@ void SideBar::status_error()
     status_led->setYellow();
 }
 
-
-CentralWrapper::CentralWrapper(QWidget *parent) :
-    QWidget(parent),
-    stopwatch(new Stopwatch(this))
-{
-    QLayout *layout = new QVBoxLayout(this);
-    layout->addWidget(stopwatch);
-    layout->setMargin(0);
-
-    stopwatch->setFixedHeight(BUTTON_SIZE);
-    stopwatch->setSizePolicy(QSizePolicy::Minimum, QSizePolicy::Fixed);
-
-    connect(stopwatch, SIGNAL(timeout()), this, SIGNAL(timeout()));
-
-    stopwatch->start(0, 0, 7);
-}
-
-void CentralWrapper::setCentralWidget(QWidget *w)
-{
-    w->setSizePolicy(QSizePolicy::MinimumExpanding, QSizePolicy::MinimumExpanding);
-    QLayout *layout = this->layout();
-    layout->addWidget(w);
-    layout->addItem(layout->takeAt(layout->indexOf(stopwatch))); // Move stopwatch to the bottom of the layout
-}
-
-void CentralWrapper::enable_stopwatch(bool enable)
-{
-    if (enable) {
-        if (stopwatch == NULL) {
-            stopwatch = new Stopwatch(this);
-            layout()->addWidget(stopwatch);
-        } else {
-            stopwatch->setVisible(true);
-        }
-    } else {
-        if (stopwatch != NULL) {
-            layout()->takeAt(layout()->indexOf(stopwatch));
-            delete stopwatch;
-        } else {
-            stopwatch->setVisible(false);
-        }
-    }
-}
-
-MainWrapper::MainWrapper(QTextStream &stream, QWidget *parent) :
-    QWidget(parent),
-    sidebar(new SideBar(this)),
-    content(new CentralWrapper(this)),
-    settings(new QWidget(this)),
-    tool_settings(new ToolSettings(this)),
-    eventlog(new EventLogger(stream, this))
-{
-    QLayout *layout = new QHBoxLayout(this);
-    layout->addWidget(sidebar);
-    layout->addWidget(content);
-    layout->addWidget(settings);
-    settings->setVisible(false);
-    settings->setLayout(new QFormLayout);
-    settings->layout()->addWidget(tool_settings);
-    layout->addWidget(eventlog);
-    eventlog->setVisible(false);
-    layout->setMargin(3);
-
-    sidebar->setSizePolicy(QSizePolicy::Minimum, QSizePolicy::MinimumExpanding);
-    content->setSizePolicy(QSizePolicy::MinimumExpanding, QSizePolicy::MinimumExpanding);
-
-    connect(sidebar, SIGNAL(main_pushed()), this, SLOT(show_content()));
-    connect(sidebar, SIGNAL(settings_pushed()), this, SLOT(show_settings()));
-    connect(sidebar, SIGNAL(eventlog_pushed()), this, SLOT(toggle_eventlog()));
-    connect(content, SIGNAL(timeout()), this, SIGNAL(timeout()));
-}
-
-void MainWrapper::setCentralWidget(QWidget *w)
-{
-    content->setCentralWidget(w);
-}
-
-void MainWrapper::enable_timer(bool enable)
-{
-    content->enable_stopwatch(enable);
-}
-
-void MainWrapper::toggle_eventlog()
-{
-    if (eventlog->isVisible()) {
-        eventlog->setVisible(false);
-    } else {
-        eventlog->setVisible(true);
-    }
-    emit resized();
-}
-
-void MainWrapper::started()
-{
-    sidebar->status_running();
-}
-
-void MainWrapper::running()
-{
-    sidebar->status_running();
-}
-
-void MainWrapper::stopped()
-{
-    sidebar->status_stopped();
-}
-
-void MainWrapper::error()
-{
-    sidebar->status_error();
-}
-
-void MainWrapper::show_content()
-{
-    if (settings->isVisible()) {
-        settings->setVisible(false);
-    }
-    content->setVisible(true);
-    emit resized();
-    emit start();
-}
-
-void MainWrapper::show_settings()
-{
-    if (content->isVisible()) {
-        content->setVisible(false);
-    }
-    settings->setVisible(true);
-    emit resized();
-}
-
-
 EventLogger::EventLogger(QTextStream &events, QWidget *parent) :
     QPlainTextEdit(parent),
     stream(events)
@@ -275,7 +220,7 @@ EventLogger::EventLogger(QTextStream &events, QWidget *parent) :
     insertPlainText(QString("[%1] Application opened").arg(QTime::currentTime().toString(QString("hh:mm:ss"))));
 
     connect(&ticker, SIGNAL(timeout()), this, SLOT(poll_stream()));
-    ticker.start(1000);
+    ticker.start(500);
 }
 
 void EventLogger::print(QString line)
@@ -297,7 +242,6 @@ void EventLogger::poll_stream()
     }
 }
 
-
 ToolSettings::ToolSettings(QWidget *parent) :
     QWidget(parent),
     pressure_edit(new QLineEdit(this)),
@@ -310,6 +254,7 @@ ToolSettings::ToolSettings(QWidget *parent) :
     title->setText("<b>Settings</b>");
     layout->addRow(title);
     layout->addRow(tr("&Enable timer:"), stopwatch_enable);
+    stopwatch_enable->setChecked(true);
     layout->addRow(tr("&Set timeout:"), timeout_delay_selector);
     layout->addRow(tr("&Set manual pressure:"), pressure_edit);
     layout->addRow(tr("&Device address:"), address_edit);

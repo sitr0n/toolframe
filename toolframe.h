@@ -13,8 +13,7 @@
 #include <QTextStream>
 #include <QLabel>
 
-class MainWrapper;
-class CentralWrapper;
+
 class SideBar;
 class EventLogger;
 class ToolSettings;
@@ -23,9 +22,9 @@ class ToolFrame : public QMdiSubWindow
     Q_OBJECT
 public:
     explicit ToolFrame(QWidget *parent = 0);
-
     void setContent(QWidget *w);
     void setSettings(QWidget *w);
+    void enable_timer(bool enable);
 
 signals:
     void timeout();
@@ -40,13 +39,25 @@ protected slots:
     void reading(int value);
     void resize();
 
+private slots:
+    void show_content();
+    void show_settings();
+    void toggle_eventlog();
+
 protected:
     QTextStream &output() const;
 
 private:
     QString logbuffer;
     QTextStream *eventlog;
-    MainWrapper *wrapper;
+
+    SideBar *m_sidebar;
+    QWidget *m_content;
+    QWidget *m_timer;
+    QWidget *m_settings;
+    QWidget *m_toolsettings;
+    QWidget *m_eventlog; // EventLogger ptr instead??
+    QWidget *m_wrapper;
 };
 
 class SideBar : public QWidget
@@ -71,59 +82,6 @@ private:
     QPushButton *eventlog_button;
     QSpacerItem *spacer;
     StatusBitWidget *status_led;
-};
-
-class CentralWrapper : public QWidget
-{
-    Q_OBJECT
-public:
-    explicit CentralWrapper(QWidget *parent = 0);
-    void setCentralWidget(QWidget *w);
-    void enable_stopwatch(bool enable);
-
-signals:
-    void timeout();
-
-private:
-    QWidget *content;
-    Stopwatch *stopwatch;
-};
-
-class MainWrapper : public QWidget
-{
-    Q_OBJECT
-public:
-    explicit MainWrapper(QTextStream &stream, QWidget *parent = 0);
-    void setCentralWidget(QWidget *w);
-    void enable_timer(bool enable);
-
-    /* WORK AROUND THESE FUNCTIONS
-     * "MainWrapper" class should
-     * contain every QWidget of the
-     * ToolFrame to reduce overhead
-     * functions. */
-    void started();
-    void running();
-    void stopped();
-    void error();
-
-signals:
-    void resized();
-    void start();
-    void timeout(); //is this right?
-
-private slots:
-    void show_content();
-    void show_settings();
-    void toggle_eventlog();
-
-private:
-    SideBar *sidebar;
-    CentralWrapper *content;
-    QWidget *settings;
-    ToolSettings *tool_settings;
-    EventLogger *eventlog;
-    //help
 };
 
 class EventLogger : public QPlainTextEdit
