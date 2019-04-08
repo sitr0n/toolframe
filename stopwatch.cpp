@@ -1,4 +1,7 @@
 #include "stopwatch.h"
+#include <QRegExp>
+#include <QDebug>
+#include <QStringList>
 #define DISPLAY_DIGITS 8
 #define HZ_1 1000
 #define HZ_2 500
@@ -34,7 +37,15 @@ void Stopwatch::set(int duration_seconds)
 
 void Stopwatch::set(QString timeout)
 {
-
+    QRegExp format("\\d\\d:\\d\\d:\\d\\d");
+    if (format.exactMatch(timeout)) {
+        QStringList tolist = timeout.split(QChar(':'));
+        int duration_seconds = 0;
+        duration_seconds += QString(tolist[0]).toInt() * SEC_PER_HOUR;
+        duration_seconds += QString(tolist[1]).toInt() * SEC_PER_MIN;
+        duration_seconds += QString(tolist[2]).toInt();
+        set(duration_seconds);
+    }
 }
 
 void Stopwatch::start()
@@ -46,7 +57,7 @@ void Stopwatch::start()
 
 void Stopwatch::start(int hours, int minutes, int seconds)
 {
-    int duration_seconds;
+    int duration_seconds = 0;
     duration_seconds += hours * SEC_PER_HOUR;
     duration_seconds += minutes * SEC_PER_MIN;
     duration_seconds += seconds;

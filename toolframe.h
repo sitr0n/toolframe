@@ -11,6 +11,10 @@
 #include <QSpacerItem>
 #include "statusbitwidget.h"
 #include <QLabel>
+#include <QLineEdit>
+#include <QSpinBox>
+#include <QCheckBox>
+#include <QSettings>
 
 class SideBar;
 class EventLogger;
@@ -61,6 +65,10 @@ private:
     ToolSettings *m_toolsettings;
     EventLogger *m_eventlog; // EventLogger ptr instead??
     QWidget *m_wrapper;
+
+
+    QString context();
+
 };
 
 class SideBar : public QWidget
@@ -103,17 +111,13 @@ private:
     void print(QString line);
 };
 
-#include <QLineEdit>
-#include <QSpinBox>
-#include <QCheckBox>
-#include <QSettings>
-
 class ToolSettings : public QWidget
 {
     Q_OBJECT
 public:
     explicit ToolSettings(QWidget *parent = 0);
     void setContext(QString context);
+    QSettings *store() const;
 
 signals:
     void first_time_setup();
@@ -136,8 +140,11 @@ private:
     QCheckBox *eventlog_checker;
     QLineEdit *eventlog_edit;
 
+    QSettings *m_store;
+
     void loadSettings();
     void saveSettings();
+    void connectWidgets();
 };
 
 #endif // TOOLFRAME_H

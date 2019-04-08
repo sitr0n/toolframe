@@ -33,6 +33,7 @@ private:
     bool m_running;
 
     QString to_string(QTime time);
+
 };
 
 #endif // STOPWATCH_H
