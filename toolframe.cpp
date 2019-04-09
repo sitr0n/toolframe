@@ -9,8 +9,6 @@
 #include <QRegExp>
 #include <QToolTip>
 
-#define BUTTON_SIZE 45
-
 ToolFrame::ToolFrame(QWidget *parent) :
     QMdiSubWindow(parent),
     eventlog(new QTextStream(&logbuffer)),
@@ -50,6 +48,7 @@ ToolFrame::ToolFrame(QWidget *parent) :
     connect(m_sidebar, SIGNAL(eventlog_pushed()), this, SLOT(toggle_eventlog()));
     connect(m_toolsettings, SIGNAL(first_time_setup()), this, SLOT(request_settings()));
     connect(m_toolsettings, SIGNAL(update_frame()), this, SLOT(load_settings()));
+    connect(m_timer, SIGNAL(timeout()), this, SIGNAL(timeout()));
     resize();
 }
 
@@ -67,7 +66,7 @@ void ToolFrame::setSettings(QWidget *w)
     w->setSizePolicy(QSizePolicy::MinimumExpanding, QSizePolicy::MinimumExpanding);
     QLayout *layout = m_settings->layout();
     layout->addWidget(w);
-    layout->addItem(layout->takeAt(layout->indexOf(m_toolsettings))); // Move generic settings to the bottom of the layout
+    layout->addItem(layout->takeAt(layout->indexOf(m_toolsettings))); // Move general settings to the bottom of the layout
 
     QString application_name = windowTitle(); // If it won't save settings, strip the string for white spaces
     m_settings_header->setText(QString("<b>%1 settings</b>").arg(application_name));
@@ -103,16 +102,25 @@ void ToolFrame::started()
 void ToolFrame::running()
 {
     m_sidebar->status_running();
+    if (!m_timer->isRunning() && store().value(QString("toolSettings/timeoutEnabled")).toBool()) {
+        m_timer->start(); // EVT: with set first.
+    }
 }
 
 void ToolFrame::stopped()
 {
     m_sidebar->status_stopped();
+    if (m_timer->isRunning()) {
+        m_timer->stop();
+    }
 }
 
 void ToolFrame::error()
 {
     m_sidebar->status_error();
+    if (m_timer->isRunning()) {
+        m_timer->stop(); // pause?
+    }
 }
 
 void ToolFrame::reading(int value)
@@ -218,6 +226,11 @@ void ToolFrame::load_settings()
 QTextStream &ToolFrame::output() const
 {
     return *eventlog;
+}
+
+QSettings &ToolFrame::store() const
+{
+    return *m_toolsettings->store();
 }
 
 QString ToolFrame::context()
@@ -363,8 +376,6 @@ ToolSettings::ToolSettings(QWidget *parent) :
 void ToolSettings::setContext(QString context)
 {
     m_store = new QSettings("Lemon", context);
-    m_context = context;
-    qDebug() << QString("Using context: %1").arg(m_context);
     connectWidgets();
     loadSettings();
 }

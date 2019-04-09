@@ -16,6 +16,8 @@
 #include <QCheckBox>
 #include <QSettings>
 
+#define BUTTON_SIZE 45
+
 class SideBar;
 class EventLogger;
 class ToolSettings;
@@ -52,6 +54,7 @@ private slots:
 protected:
     //void setTitle(QString title);
     QTextStream &output() const;
+    QSettings &store() const; // Maybe store the referenced member in m_settings instead of m_toolsettings (since its used for all settings)
 
 private:
     QString logbuffer;
@@ -63,9 +66,8 @@ private:
     QWidget *m_settings;
     QLabel *m_settings_header;
     ToolSettings *m_toolsettings;
-    EventLogger *m_eventlog; // EventLogger ptr instead??
+    EventLogger *m_eventlog;
     QWidget *m_wrapper;
-
 
     QString context();
 
@@ -128,8 +130,6 @@ private slots:
     void set_timeout();
 
 private:
-    QString m_context;
-
     QFrame *timeout_line;
     QCheckBox *timeout_checker;
     QLineEdit *timeout_edit;
