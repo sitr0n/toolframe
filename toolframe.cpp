@@ -1,4 +1,5 @@
 #include "toolframe.h"
+#include <QSpacerItem>
 #include <QVBoxLayout>
 #include <QHBoxLayout>
 #include <QFormLayout>
@@ -11,14 +12,15 @@
 
 ToolFrame::ToolFrame(QWidget *parent) :
     QMdiSubWindow(parent),
+    m_usingTimer(false),
+    m_usingPlot(false),
+    m_usingEventlog(false),
     eventlog(new QTextStream(&logbuffer)),
     m_sidebar(new SideBar(this)),
     m_content(new QWidget(this)),
-    m_timer(new Stopwatch(this)),
     m_settings(new QWidget(this)),
     m_settings_header(new QLabel(QString("<b> Settings </b>"), this)),
     m_toolsettings(new ToolSettings(this)),
-    m_eventlog(new EventLogger(*eventlog, this)),
     m_wrapper(new QWidget(this))
 {
     layout()->setMargin(6);
@@ -35,24 +37,57 @@ ToolFrame::ToolFrame(QWidget *parent) :
     m_wrapper->layout()->addWidget(m_sidebar);
     m_wrapper->layout()->addWidget(m_content);
     m_wrapper->layout()->addWidget(m_settings);
-    m_wrapper->layout()->addWidget(m_eventlog);
-    m_eventlog->setVisible(false);
 
+    connect(m_sidebar, SIGNAL(main_pushed()), this, SLOT(show_content()));
+    connect(m_sidebar, SIGNAL(settings_pushed()), this, SLOT(show_settings()));
+    connect(m_toolsettings, SIGNAL(first_time_setup()), this, SLOT(request_settings()));
+    connect(m_toolsettings, SIGNAL(update_frame()), this, SLOT(load_settings()));
+
+    resize();
+}
+
+void ToolFrame::useTimer()
+{
+    if (m_usingTimer) {
+        return;
+    }
+    m_usingTimer = true;
+
+    m_timer = new Stopwatch(this);
     m_content->layout()->addWidget(m_timer);
     m_timer->setFixedHeight(BUTTON_SIZE);
     m_timer->setMinimumWidth(4*BUTTON_SIZE);
     m_timer->setSizePolicy(QSizePolicy::Minimum, QSizePolicy::Fixed);
 
-    connect(m_sidebar, SIGNAL(main_pushed()), this, SLOT(show_content()));
-    connect(m_sidebar, SIGNAL(settings_pushed()), this, SLOT(show_settings()));
-    connect(m_sidebar, SIGNAL(eventlog_pushed()), this, SLOT(toggle_eventlog()));
-    connect(m_toolsettings, SIGNAL(first_time_setup()), this, SLOT(request_settings()));
-    connect(m_toolsettings, SIGNAL(update_frame()), this, SLOT(load_settings()));
+    m_toolsettings->addTimer();
+
     connect(m_timer, SIGNAL(timeout()), this, SIGNAL(timeout()));
-    resize();
 }
 
-void ToolFrame::setContent(QWidget *w)
+void ToolFrame::usePlot()
+{
+    if (m_usingPlot) {
+        return;
+    }
+    m_usingPlot = true;
+    // ----------------------------
+}
+
+void ToolFrame::useEventlog()
+{
+    if (m_usingEventlog) {
+        return;
+    }
+    m_usingEventlog = true;
+
+    m_eventlog = new EventLogger(*eventlog, this);
+    m_wrapper->layout()->addWidget(m_eventlog);
+    m_toolsettings->addEventlog();
+
+    connect(m_sidebar, SIGNAL(eventlog_pushed()), this, SLOT(toggle_eventlog()));
+}
+
+void ToolFrame::putContent(QWidget *w)
 {
     w->setSizePolicy(QSizePolicy::MinimumExpanding, QSizePolicy::MinimumExpanding);
     QLayout *layout = m_content->layout();
@@ -61,7 +96,7 @@ void ToolFrame::setContent(QWidget *w)
     resize();
 }
 
-void ToolFrame::setSettings(QWidget *w)
+void ToolFrame::putSettings(QWidget *w)
 {
     w->setSizePolicy(QSizePolicy::MinimumExpanding, QSizePolicy::MinimumExpanding);
     QLayout *layout = m_settings->layout();
@@ -102,28 +137,34 @@ void ToolFrame::started()
 void ToolFrame::running()
 {
     m_sidebar->status_running();
-    if (!m_timer->isRunning() && store().value(QString("toolSettings/timeoutEnabled")).toBool()) {
-        m_timer->start(); // EVT: with set first.
+    if (m_usingTimer) {
+        if (!m_timer->isRunning() && store().value(QString("toolSettings/timeoutEnabled")).toBool()) {
+            m_timer->start(); // EVT: with set first.
+        }
     }
 }
 
 void ToolFrame::stopped()
 {
     m_sidebar->status_stopped();
-    if (m_timer->isRunning()) {
-        m_timer->stop();
+    if (m_usingTimer) {
+        if (m_timer->isRunning()) {
+            m_timer->stop();
+        }
     }
 }
 
 void ToolFrame::error()
 {
     m_sidebar->status_error();
-    if (m_timer->isRunning()) {
-        m_timer->stop(); // pause?
+    if (m_usingTimer) {
+        if (m_timer->isRunning()) {
+            m_timer->stop(); // pause?
+        }
     }
 }
 
-void ToolFrame::reading(int value)
+void ToolFrame::plot(int value)
 {
     Q_UNUSED(value);
     // log value in graph class
@@ -174,53 +215,70 @@ void ToolFrame::toggle_eventlog()
 
 void ToolFrame::load_settings()
 {
-    QSettings *settings = m_toolsettings->store();
-    QVariant timeout_enabled = settings->value(QString("toolSettings/timeoutEnabled"));
-    if (!timeout_enabled.isNull()) {
+    if (m_usingTimer) {
+        QVariant timeout_enabled = store().value(QString("toolSettings/timeoutEnabled"));
+        if (!timeout_enabled.isNull()) {
+            if (timeout_enabled.toBool()) {
+                m_timer->setVisible(true);
+            } else {
+                m_timer->stop();
+                m_timer->setVisible(false);
+            }
+        } else {
+            output() << QString("No settings for timer found");
+        }
         if (timeout_enabled.toBool()) {
-            m_timer->setVisible(true);
-        } else {
-            m_timer->stop();
-            m_timer->setVisible(false);
-        }
-    } else {
-        output() << QString("No settings for timer found");
-    }
-    if (timeout_enabled.toBool()) {
-        QVariant timeout = settings->value(QString("toolSettings/timeout"));
-        if (!timeout.isNull()) {
-            m_timer->set(timeout.toString());
-        } else {
-            output() << QString("No settings for timeout found");
+            QVariant timeout = store().value(QString("toolSettings/timeout"));
+            if (!timeout.isNull()) {
+                m_timer->set(timeout.toString());
+            } else {
+                output() << QString("No settings for timeout found");
+            }
         }
     }
 
-    QVariant graph_enabled = settings->value(QString("toolSettings/graphEnabled"));
-    if (!graph_enabled.isNull()) {
-        if (graph_enabled.toBool()) {
-//            m_graph->setVisible(true);
-            output() << QString("Give me graph");
+    if (m_usingPlot) {
+        QVariant graph_enabled = store().value(QString("toolSettings/graphEnabled"));
+        if (!graph_enabled.isNull()) {
+            if (graph_enabled.toBool()) {
+    //            m_graph->setVisible(true);
+                output() << QString("Give me graph");
+            } else {
+                output() << QString("Remove graph");
+    //            m_graph->stop();
+    //            m_graph->setVisible(false);
+            }
         } else {
-            output() << QString("Remove graph");
-//            m_graph->stop();
-//            m_graph->setVisible(false);
+            //output() << QString("No settings for graph found");
         }
-    } else {
-        //output() << QString("No settings for graph found");
     }
 
-    QVariant eventlog_enabled = settings->value(QString("toolSettings/eventlogEnabled"));
-    if (!eventlog_enabled.isNull()) {
+
+    if (m_usingEventlog) {
+        QVariant eventlog_enabled = store().value(QString("toolSettings/eventlogEnabled"));
+        if (!eventlog_enabled.isNull()) {
+            if (eventlog_enabled.toBool()) {
+                // m_sidebar->eventlog_button->setVisible(true);
+            } else {
+                //m_eventlog->stop(); AND
+                //m_eventlog_button->setVisible(false);
+                m_eventlog->setVisible(false);
+            }
+        } else {
+            output() << QString("No settings for eventlog found");
+        }
         if (eventlog_enabled.toBool()) {
-            m_eventlog->setVisible(true);
-        } else {
-            //m_eventlog->stop(); AND
-            //m_eventlog_button->setVisible(false);
-            m_eventlog->setVisible(false);
+            QVariant sampling = store().value(QString("toolSettings/eventlogSampling"));
+            if (!sampling.isNull()) {
+                m_eventlog->setSampleInterval(sampling.toInt());
+                output() << QString("Found sampling: %1").arg(sampling.toInt());
+            } else {
+                output() << QString("No settings for elog sampling found");
+            }
         }
-    } else {
-        //output() << QString("No settings for eventlog found");
     }
+
+    resize(); // Remove this when settings are fixed
 }
 
 QTextStream &ToolFrame::output() const
@@ -244,14 +302,13 @@ SideBar::SideBar(QWidget *parent) :
     main_button(new QPushButton(this)),
     settings_button(new QPushButton(this)),
     eventlog_button(new QPushButton(this)),
-    spacer(new QSpacerItem(0, 0, QSizePolicy::Minimum, QSizePolicy::MinimumExpanding)),
     status_led(new StatusBitWidget(this))
 {
     QVBoxLayout *layout = new QVBoxLayout(this);
     layout->addWidget(main_button);
     layout->addWidget(settings_button);
     layout->addWidget(eventlog_button);
-    layout->addItem(spacer);
+    layout->addItem(new QSpacerItem(0, 0, QSizePolicy::Minimum, QSizePolicy::MinimumExpanding));
     layout->addWidget(status_led);
     layout->setMargin(0);
 
@@ -313,7 +370,13 @@ EventLogger::EventLogger(QTextStream &events, QWidget *parent) :
     insertPlainText(QString("[%1] Application opened").arg(QTime::currentTime().toString(QString("hh:mm:ss"))));
 
     connect(&ticker, SIGNAL(timeout()), this, SLOT(poll_stream()));
-    ticker.start(500);
+    setSampleInterval(1000);
+    ticker.start();
+}
+
+void EventLogger::setSampleInterval(int interval)
+{
+    ticker.setInterval(interval);
 }
 
 void EventLogger::print(QString line)
@@ -337,40 +400,11 @@ void EventLogger::poll_stream()
 
 ToolSettings::ToolSettings(QWidget *parent) :
     QWidget(parent),
-    timeout_line(new QFrame(this)),
-    timeout_checker(new QCheckBox(this)),
-    timeout_edit(new QLineEdit(this)),
-    graph_line(new QFrame(this)),
-    graph_checker(new QCheckBox(this)),
-    graph_sample_edit(new QLineEdit(this)),
-    eventlog_line(new QFrame(this)),
-    eventlog_checker(new QCheckBox(this)),
-    eventlog_edit(new QLineEdit(this))
+    m_usingTimer(false),
+    m_usingPlot(false),
+    m_usingEventlog(false)
 {
-    timeout_line->setFrameShape(QFrame::HLine);
-    timeout_line->setFrameShadow(QFrame::Sunken);
-    timeout_edit->setPlaceholderText("[hh:mm:ss]");
-    graph_line->setFrameShape(QFrame::HLine);
-    graph_line->setFrameShadow(QFrame::Sunken);
-    graph_sample_edit->setPlaceholderText("[ms]");
-    eventlog_line->setFrameShape(QFrame::HLine);
-    eventlog_line->setFrameShadow(QFrame::Sunken);
-    eventlog_edit->setPlaceholderText("[ms]");
-
-
-
-    QFormLayout *layout = new QFormLayout(this);
-    layout->addRow(timeout_line);
-    layout->addRow(tr("&Enable timer:"), timeout_checker);
-    layout->addRow(tr("&Set timeout:"), timeout_edit);
-    layout->addRow(graph_line);
-    layout->addRow(tr("&Enable graph:"), graph_checker);
-    layout->addRow(tr("&Sample frequency"), graph_sample_edit);
-    layout->addRow(eventlog_line);
-    layout->addRow(tr("&Event log"), eventlog_checker);
-    layout->addRow(tr("&Sample frequency"), eventlog_edit);
-
-
+    setLayout(new QFormLayout(this));
 }
 
 void ToolSettings::setContext(QString context)
@@ -380,6 +414,65 @@ void ToolSettings::setContext(QString context)
     loadSettings();
 }
 
+void ToolSettings::addTimer()
+{
+    if (m_usingTimer) {
+        return;
+    }
+    m_usingTimer = true;
+
+    timeout_checker = new QCheckBox(this);
+    timeout_edit = new QLineEdit(this);
+    timeout_edit->setPlaceholderText("[hh:mm:ss]");
+
+    QFormLayout *form = qobject_cast<QFormLayout*>(layout());
+    form->addRow(separator());
+    form->addRow(tr("&Enable timer:"), timeout_checker);
+    form->addRow(tr("&Set timeout:"), timeout_edit);
+
+    connect(timeout_checker, SIGNAL(clicked()), this, SLOT(update_form()));
+    connect(timeout_edit, SIGNAL(returnPressed()), this, SLOT(set_timeout()));
+}
+
+void ToolSettings::addPlot()
+{
+    if (m_usingPlot) {
+        return;
+    }
+    m_usingPlot = true;
+
+    graph_checker = new QCheckBox(this);
+    graph_sample_edit = new QLineEdit(this);
+    graph_sample_edit->setPlaceholderText("[ms]");
+
+    QFormLayout *form = qobject_cast<QFormLayout*>(layout());
+    form->addRow(separator());
+    form->addRow(tr("&Enable graph:"), graph_checker);
+    form->addRow(tr("&Sample interval"), graph_sample_edit);
+
+    connect(graph_checker, SIGNAL(clicked()), this, SLOT(update_form()));
+}
+
+void ToolSettings::addEventlog()
+{
+    if (m_usingEventlog) {
+        return;
+    }
+    m_usingEventlog = true;
+
+    eventlog_checker = new QCheckBox(this);
+    eventlog_edit = new QLineEdit(this);
+    eventlog_edit->setPlaceholderText("[ms]");
+
+    QFormLayout *form = qobject_cast<QFormLayout*>(layout());
+    form->addRow(separator());
+    form->addRow(tr("&Event log"), eventlog_checker);
+    form->addRow(tr("&Sample interval"), eventlog_edit);
+
+    connect(eventlog_checker, SIGNAL(clicked()), this, SLOT(update_form()));
+    connect(eventlog_edit, SIGNAL(returnPressed()), this, SLOT(set_eventlog_sampling()));
+}
+
 QSettings *ToolSettings::store() const
 {
     return m_store;
@@ -387,30 +480,39 @@ QSettings *ToolSettings::store() const
 
 void ToolSettings::update_form()
 {
-    if (timeout_checker->isChecked()) {
-        timeout_edit->setEnabled(true);
-    } else {
-        timeout_edit->setEnabled(false);
+    if (m_usingTimer) {
+        if (timeout_checker->isChecked()) {
+            timeout_edit->setEnabled(true);
+        } else {
+            timeout_edit->setEnabled(false);
+        }
     }
-    if (graph_checker->isChecked()) {
-        graph_sample_edit->setEnabled(true);
-    } else {
-        graph_sample_edit->setEnabled(false);
+
+    if (m_usingPlot) {
+        if (graph_checker->isChecked()) {
+            graph_sample_edit->setEnabled(true);
+        } else {
+            graph_sample_edit->setEnabled(false);
+        }
     }
-    if (eventlog_checker->isChecked()) {
-        eventlog_edit->setEnabled(true);
-    } else {
-        eventlog_edit->setEnabled(false);
+
+    if (m_usingEventlog) {
+        if (eventlog_checker->isChecked()) {
+            eventlog_edit->setEnabled(true);
+        } else {
+            eventlog_edit->setEnabled(false);
+        }
     }
+
     saveSettings();
     emit update_frame();
 }
 
 void ToolSettings::set_timeout()
 {
-    QRegExp regex("\\d\\d:\\d\\d:\\d\\d");
+    QRegExp format("\\d\\d:\\d\\d:\\d\\d");
     QString timeout = timeout_edit->text();
-    if (regex.exactMatch(timeout)) {
+    if (format.exactMatch(timeout)) {
         store()->setValue(QString("toolSettings/timeout"), timeout);
         emit update_frame();
     } else {
@@ -418,46 +520,72 @@ void ToolSettings::set_timeout()
     }
 }
 
+void ToolSettings::set_eventlog_sampling()
+{
+    QRegExp format("\\d*");
+    QString interval = eventlog_edit->text();
+    if (format.exactMatch(interval)) {
+        store()->setValue(QString("toolSettings/eventlogSampling"), interval);
+        emit update_frame();
+    } else {
+        QToolTip::showText(eventlog_edit->mapToGlobal(QPoint(0, 0)), QString("Only digits!"));
+    }
+}
+
+QFrame *ToolSettings::separator()
+{
+    QFrame *line = new QFrame(this);
+    line->setFrameShape(QFrame::HLine);
+    line->setFrameShadow(QFrame::Sunken);
+    return line;
+}
+
 void ToolSettings::loadSettings()
 {
     bool settings_found = true;
-    QVariant timeout_enabled = store()->value(QString("toolSettings/timeoutEnabled"));
-    if (!timeout_enabled.isNull()) {
-        timeout_checker->setChecked(timeout_enabled.toBool());
-    } else {
-        settings_found = false;
-    }
-    QVariant timeout = store()->value(QString("toolSettings/timeout"));
-    if (!timeout.isNull()) {
-        timeout_edit->setText(timeout.toString());
-    } else {
-        settings_found = false;
-    }
-
-    QVariant graph_enabled = store()->value(QString("toolSettings/graphEnabled"));
-    if (!graph_enabled.isNull()) {
-        graph_checker->setChecked(graph_enabled.toBool());
-    } else {
-        settings_found = false;
-    }
-    QVariant graph_sampling = store()->value(QString("toolSettings/graphSampling"));
-    if (!graph_sampling.isNull()) {
-        graph_sample_edit->setText(graph_sampling.toString());
-    } else {
-        settings_found = false;
+    if (m_usingTimer) {
+        QVariant timeout_enabled = store()->value(QString("toolSettings/timeoutEnabled"));
+        if (!timeout_enabled.isNull()) {
+            timeout_checker->setChecked(timeout_enabled.toBool());
+        } else {
+            settings_found = false;
+        }
+        QVariant timeout = store()->value(QString("toolSettings/timeout"));
+        if (!timeout.isNull()) {
+            timeout_edit->setText(timeout.toString());
+        } else {
+            settings_found = false;
+        }
     }
 
-    QVariant eventlog_enabled = store()->value(QString("toolSettings/eventlogEnabled"));
-    if (!eventlog_enabled.isNull()) {
-        eventlog_checker->setChecked(eventlog_enabled.toBool());
-    } else {
-        settings_found = false;
+    if (m_usingPlot) {
+        QVariant graph_enabled = store()->value(QString("toolSettings/graphEnabled"));
+        if (!graph_enabled.isNull()) {
+            graph_checker->setChecked(graph_enabled.toBool());
+        } else {
+            settings_found = false;
+        }
+        QVariant graph_sampling = store()->value(QString("toolSettings/graphSampling"));
+        if (!graph_sampling.isNull()) {
+            graph_sample_edit->setText(graph_sampling.toString());
+        } else {
+            settings_found = false;
+        }
     }
-    QVariant eventlog_sampling = store()->value(QString("toolSettings/eventlogSampling"));
-    if (!eventlog_sampling.isNull()) {
-        eventlog_edit->setText(eventlog_sampling.toString());
-    } else {
-        settings_found = false;
+
+    if (m_usingEventlog) {
+        QVariant eventlog_enabled = store()->value(QString("toolSettings/eventlogEnabled"));
+        if (!eventlog_enabled.isNull()) {
+            eventlog_checker->setChecked(eventlog_enabled.toBool());
+        } else {
+            settings_found = false;
+        }
+        QVariant eventlog_sampling = store()->value(QString("toolSettings/eventlogSampling"));
+        if (!eventlog_sampling.isNull()) {
+            eventlog_edit->setText(eventlog_sampling.toString());
+        } else {
+            settings_found = false;
+        }
     }
 
     if (!settings_found) {
@@ -468,20 +596,25 @@ void ToolSettings::loadSettings()
 
 void ToolSettings::saveSettings()
 {
-    store()->setValue(QString("toolSettings/timeoutEnabled"), timeout_checker->isChecked());
-    store()->setValue(QString("toolSettings/timeout"), timeout_edit->text());
+    if (m_usingTimer) {
+        store()->setValue(QString("toolSettings/timeoutEnabled"), timeout_checker->isChecked());
+        store()->setValue(QString("toolSettings/timeout"), timeout_edit->text());
+    }
+
 
 //    store()->setValue(QString("toolSettings/graphEnabled"), graph_checker->isChecked());
 //    store()->setValue(QString("toolSettings/graphSampling"), graph_sample_edit->text());
 
-//    store()->setValue(QString("toolSettings/eventlogEnabled"), eventlog_checker->isChecked());
-    //    store()->setValue(QString("toolSettings/eventlogSampling"), eventlog_edit->text());
+    if (m_usingEventlog) {
+        store()->setValue(QString("toolSettings/eventlogEnabled"), eventlog_checker->isChecked());
+        store()->setValue(QString("toolSettings/eventlogSampling"), eventlog_edit->text());
+    }
+
 }
 
 void ToolSettings::connectWidgets()
 {
-    connect(timeout_checker, SIGNAL(clicked()), this, SLOT(update_form()));
-    connect(graph_checker, SIGNAL(clicked()), this, SLOT(update_form()));
-    connect(eventlog_checker, SIGNAL(clicked()), this, SLOT(update_form()));
-    connect(timeout_edit, SIGNAL(returnPressed()), this, SLOT(set_timeout()));
+
+    //connect graph samples
+
 }

@@ -8,7 +8,6 @@
 #include "stopwatch.h"
 #include <QTimer>
 #include <QPushButton>
-#include <QSpacerItem>
 #include "statusbitwidget.h"
 #include <QLabel>
 #include <QLineEdit>
@@ -26,8 +25,11 @@ class ToolFrame : public QMdiSubWindow
     Q_OBJECT
 public:
     explicit ToolFrame(QWidget *parent = 0);
-    void setContent(QWidget *w);
-    void setSettings(QWidget *w);
+    void useTimer(); // startTimer ?
+    void usePlot();
+    void useEventlog();
+    void putContent(QWidget *w);
+    void putSettings(QWidget *w);
     void enable_timer(bool enable);
 
 signals:
@@ -40,7 +42,7 @@ protected slots:
     void running();
     void stopped();
     void error();
-    void reading(int value);
+    void plot(int value);
 
     void resize();
     void request_settings();
@@ -57,6 +59,9 @@ protected:
     QSettings &store() const; // Maybe store the referenced member in m_settings instead of m_toolsettings (since its used for all settings)
 
 private:
+    bool m_usingTimer;
+    bool m_usingPlot;
+    bool m_usingEventlog;
     QString logbuffer;
     QTextStream *eventlog;
 
@@ -93,7 +98,6 @@ private:
     QPushButton *main_button;
     QPushButton *settings_button;
     QPushButton *eventlog_button;
-    QSpacerItem *spacer;
     StatusBitWidget *status_led;
 };
 
@@ -102,6 +106,7 @@ class EventLogger : public QPlainTextEdit
     Q_OBJECT
 public:
     explicit EventLogger(QTextStream &events, QWidget *parent = 0);
+    void setSampleInterval(int interval);
 
 private slots:
     void poll_stream();
@@ -119,6 +124,9 @@ class ToolSettings : public QWidget
 public:
     explicit ToolSettings(QWidget *parent = 0);
     void setContext(QString context);
+    void addTimer();
+    void addPlot();
+    void addEventlog();
     QSettings *store() const;
 
 signals:
@@ -128,6 +136,7 @@ signals:
 private slots:
     void update_form();
     void set_timeout();
+    void set_eventlog_sampling();
 
 private:
     QFrame *timeout_line;
@@ -142,8 +151,14 @@ private:
 
     QSettings *m_store;
 
-    void loadSettings();
-    void saveSettings();
+    bool m_usingTimer;
+    bool m_usingPlot;
+    bool m_usingEventlog;
+
+    QFrame *separator();
+
+    void loadSettings(); // break into one loader for each widget
+    void saveSettings(); // break into one saver for each widget
     void connectWidgets();
 };
 
