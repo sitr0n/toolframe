@@ -14,6 +14,7 @@
 #include <QSpinBox>
 #include <QCheckBox>
 #include <QSettings>
+#include <QSpacerItem>
 
 #define BUTTON_SIZE 45
 
@@ -54,7 +55,6 @@ private slots:
     void load_settings();
 
 protected:
-    //void setTitle(QString title);
     QTextStream &output() const;
     QSettings &store() const; // Maybe store the referenced member in m_settings instead of m_toolsettings (since its used for all settings)
 
@@ -62,10 +62,18 @@ private:
     bool m_usingTimer;
     bool m_usingPlot;
     bool m_usingEventlog;
+
+    QPushButton *m_start_button;
+    QPushButton *m_settings_button;
+    QPushButton *m_plot_button;
+    QPushButton *m_eventlog_button;
+    QSpacerItem *sidebar_separator;
+    StatusBitWidget *m_status_led;
+
     QString logbuffer;
     QTextStream *eventlog;
 
-    SideBar *m_sidebar;
+    QWidget *m_sidebar;
     QWidget *m_content;
     Stopwatch *m_timer;
     QWidget *m_settings;
@@ -75,30 +83,7 @@ private:
     QWidget *m_wrapper;
 
     QString context();
-
-};
-
-class SideBar : public QWidget
-{
-    Q_OBJECT
-public:
-    explicit SideBar(QWidget *parent = 0);
-    void status_started();
-    void status_running();
-    void status_stopped();
-    void status_error();
-
-signals:
-    void main_pushed();
-    void settings_pushed();
-    void timer_pushed();
-    void eventlog_pushed();
-
-private:
-    QPushButton *main_button;
-    QPushButton *settings_button;
-    QPushButton *eventlog_button;
-    StatusBitWidget *status_led;
+    void resetSidebar();
 };
 
 class EventLogger : public QPlainTextEdit

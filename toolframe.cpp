@@ -15,31 +15,57 @@ ToolFrame::ToolFrame(QWidget *parent) :
     m_usingTimer(false),
     m_usingPlot(false),
     m_usingEventlog(false),
+    m_start_button(new QPushButton(this)),
+    m_settings_button(new QPushButton(this)),
+    sidebar_separator(new QSpacerItem(0, 0, QSizePolicy::Minimum, QSizePolicy::MinimumExpanding)),
+    m_status_led(new StatusBitWidget(this)),
     eventlog(new QTextStream(&logbuffer)),
-    m_sidebar(new SideBar(this)),
+    m_sidebar(new QWidget(this)),
     m_content(new QWidget(this)),
     m_settings(new QWidget(this)),
     m_settings_header(new QLabel(QString("<b> Settings </b>"), this)),
     m_toolsettings(new ToolSettings(this)),
     m_wrapper(new QWidget(this))
 {
-    layout()->setMargin(6);
+    m_start_button->setMinimumSize(QSize(BUTTON_SIZE, BUTTON_SIZE));
+    m_start_button->setSizePolicy(QSizePolicy::Minimum, QSizePolicy::Minimum);
+    m_start_button->setIcon(QIcon(":/icons/start.png"));
+    m_start_button->setIconSize(QSize(BUTTON_SIZE/2, BUTTON_SIZE/2));
+
+    m_settings_button->setMinimumSize(QSize(BUTTON_SIZE, BUTTON_SIZE));
+    m_settings_button->setSizePolicy(QSizePolicy::Minimum, QSizePolicy::Minimum);
+    m_settings_button->setIcon(QIcon(":/icons/settings.png"));
+    m_settings_button->setIconSize(QSize(BUTTON_SIZE/2, BUTTON_SIZE/2));
+
+    m_status_led->setFixedSize(QSize(BUTTON_SIZE, BUTTON_SIZE));
+    m_status_led->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
+
+    m_sidebar->setLayout(new QVBoxLayout);
     m_content->setLayout(new QVBoxLayout);
-    m_content->layout()->setMargin(0);
     m_settings->setLayout(new QVBoxLayout);
+    m_wrapper->setLayout(new QHBoxLayout);
+
+    m_sidebar->layout()->addWidget(m_start_button);
+    m_sidebar->layout()->addWidget(m_settings_button);
+    m_sidebar->layout()->addItem(sidebar_separator);
+    m_sidebar->layout()->addWidget(m_status_led);
+
     m_settings->layout()->addWidget(m_settings_header);
     m_settings->layout()->addWidget(m_toolsettings);
     m_settings->setVisible(false);
-    m_wrapper->setLayout(new QHBoxLayout);
-    m_wrapper->layout()->setMargin(0);
-    setWidget(m_wrapper);
 
     m_wrapper->layout()->addWidget(m_sidebar);
     m_wrapper->layout()->addWidget(m_content);
     m_wrapper->layout()->addWidget(m_settings);
 
-    connect(m_sidebar, SIGNAL(main_pushed()), this, SLOT(show_content()));
-    connect(m_sidebar, SIGNAL(settings_pushed()), this, SLOT(show_settings()));
+    this->layout()->setMargin(6);
+    m_sidebar->layout()->setMargin(0);
+    m_content->layout()->setMargin(0);
+    m_wrapper->layout()->setMargin(0);
+    setWidget(m_wrapper);
+
+    connect(m_start_button, SIGNAL(clicked(bool)), this, SLOT(show_content()));
+    connect(m_settings_button, SIGNAL(clicked(bool)), this, SLOT(show_settings()));
     connect(m_toolsettings, SIGNAL(first_time_setup()), this, SLOT(request_settings()));
     connect(m_toolsettings, SIGNAL(update_frame()), this, SLOT(load_settings()));
 
@@ -70,7 +96,16 @@ void ToolFrame::usePlot()
         return;
     }
     m_usingPlot = true;
-    // ----------------------------
+
+    //new PlotCreator
+
+    m_plot_button = new QPushButton(this);
+    m_sidebar->layout()->addWidget(m_eventlog_button);
+    resetSidebar();
+
+    m_toolsettings->addPlot();
+
+    // Connect something
 }
 
 void ToolFrame::useEventlog()
@@ -82,9 +117,18 @@ void ToolFrame::useEventlog()
 
     m_eventlog = new EventLogger(*eventlog, this);
     m_wrapper->layout()->addWidget(m_eventlog);
+
+    m_eventlog_button = new QPushButton(this);
+    m_eventlog_button->setMinimumSize(QSize(BUTTON_SIZE, BUTTON_SIZE));
+    m_eventlog_button->setSizePolicy(QSizePolicy::Minimum, QSizePolicy::Minimum);
+    m_eventlog_button->setIcon(QIcon(":/icons/eventlog.png"));
+    m_eventlog_button->setIconSize(QSize(BUTTON_SIZE/2, BUTTON_SIZE/2));
+    m_sidebar->layout()->addWidget(m_eventlog_button);
+    resetSidebar();
+
     m_toolsettings->addEventlog();
 
-    connect(m_sidebar, SIGNAL(eventlog_pushed()), this, SLOT(toggle_eventlog()));
+    connect(m_eventlog_button, SIGNAL(clicked(bool)), this, SLOT(toggle_eventlog()));
 }
 
 void ToolFrame::putContent(QWidget *w)
@@ -131,12 +175,12 @@ void ToolFrame::enable_timer(bool enable)
 
 void ToolFrame::started()
 {
-    m_sidebar->status_started();
+    m_status_led->setBlue();
 }
 
 void ToolFrame::running()
 {
-    m_sidebar->status_running();
+    m_status_led->setGreen();
     if (m_usingTimer) {
         if (!m_timer->isRunning() && store().value(QString("toolSettings/timeoutEnabled")).toBool()) {
             m_timer->start(); // EVT: with set first.
@@ -146,7 +190,7 @@ void ToolFrame::running()
 
 void ToolFrame::stopped()
 {
-    m_sidebar->status_stopped();
+    m_status_led->setInactive();
     if (m_usingTimer) {
         if (m_timer->isRunning()) {
             m_timer->stop();
@@ -156,7 +200,7 @@ void ToolFrame::stopped()
 
 void ToolFrame::error()
 {
-    m_sidebar->status_error();
+    m_status_led->setYellow();
     if (m_usingTimer) {
         if (m_timer->isRunning()) {
             m_timer->stop(); // pause?
@@ -297,62 +341,14 @@ QString ToolFrame::context()
     return QString(windowTitle().simplified().remove(space));
 }
 
-SideBar::SideBar(QWidget *parent) :
-    QWidget(parent),
-    main_button(new QPushButton(this)),
-    settings_button(new QPushButton(this)),
-    eventlog_button(new QPushButton(this)),
-    status_led(new StatusBitWidget(this))
+void ToolFrame::resetSidebar()
 {
-    QVBoxLayout *layout = new QVBoxLayout(this);
-    layout->addWidget(main_button);
-    layout->addWidget(settings_button);
-    layout->addWidget(eventlog_button);
-    layout->addItem(new QSpacerItem(0, 0, QSizePolicy::Minimum, QSizePolicy::MinimumExpanding));
-    layout->addWidget(status_led);
-    layout->setMargin(0);
-
-    main_button->setMinimumSize(QSize(BUTTON_SIZE, BUTTON_SIZE));
-    main_button->setSizePolicy(QSizePolicy::Minimum, QSizePolicy::Minimum);
-    main_button->setIcon(QIcon(":/icons/start.png"));
-    main_button->setIconSize(QSize(BUTTON_SIZE/2, BUTTON_SIZE/2));
-
-    settings_button->setMinimumSize(QSize(BUTTON_SIZE, BUTTON_SIZE));
-    settings_button->setSizePolicy(QSizePolicy::Minimum, QSizePolicy::Minimum);
-    settings_button->setIcon(QIcon(":/icons/settings.png"));
-    settings_button->setIconSize(QSize(BUTTON_SIZE/2, BUTTON_SIZE/2));
-
-    eventlog_button->setMinimumSize(QSize(BUTTON_SIZE, BUTTON_SIZE));
-    eventlog_button->setSizePolicy(QSizePolicy::Minimum, QSizePolicy::Minimum);
-    eventlog_button->setIcon(QIcon(":/icons/eventlog.png"));
-    eventlog_button->setIconSize(QSize(BUTTON_SIZE/2, BUTTON_SIZE/2));
-
-    status_led->setFixedSize(QSize(BUTTON_SIZE, BUTTON_SIZE));
-    status_led->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
-
-    connect(main_button, SIGNAL(clicked()), this, SIGNAL(main_pushed()));
-    connect(settings_button, SIGNAL(clicked()), this, SIGNAL(settings_pushed()));
-    connect(eventlog_button, SIGNAL(clicked()), this, SIGNAL(eventlog_pushed()));
-}
-
-void SideBar::status_started()
-{
-    status_led->setBlue();
-}
-
-void SideBar::status_running()
-{
-    status_led->setGreen();
-}
-
-void SideBar::status_stopped()
-{
-    status_led->setInactive();
-}
-
-void SideBar::status_error()
-{
-    status_led->setYellow();
+    QLayout *layout = m_sidebar->layout();
+    int last_item = layout->indexOf(m_status_led); // Use more robust function like length of or something
+    layout->takeAt(last_item);
+    layout->takeAt(last_item - 1);
+    layout->addItem(sidebar_separator);
+    layout->addWidget(m_status_led);
 }
 
 EventLogger::EventLogger(QTextStream &events, QWidget *parent) :
