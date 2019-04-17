@@ -27,7 +27,7 @@ class ToolFrame : public QMdiSubWindow
 public:
     explicit ToolFrame(QWidget *parent = 0);
     void useTimer(); // startTimer ?
-    void usePlot();
+    void usePlot(); // currently not working
     void useEventlog();
     void putContent(QWidget *w);
     void putSettings(QWidget *w);
@@ -144,7 +144,6 @@ private:
 
     void loadSettings(); // break into one loader for each widget
     void saveSettings(); // break into one saver for each widget
-    void connectWidgets();
 };
 
 #endif // TOOLFRAME_H

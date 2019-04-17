@@ -27,6 +27,8 @@ ToolFrame::ToolFrame(QWidget *parent) :
     m_toolsettings(new ToolSettings(this)),
     m_wrapper(new QWidget(this))
 {
+    setWindowIcon(QIcon("noicon"));
+    setAttribute(Qt::WA_DeleteOnClose);
     m_start_button->setMinimumSize(QSize(BUTTON_SIZE, BUTTON_SIZE));
     m_start_button->setSizePolicy(QSizePolicy::Minimum, QSizePolicy::Minimum);
     m_start_button->setIcon(QIcon(":/icons/start.png"));
@@ -100,7 +102,11 @@ void ToolFrame::usePlot()
     //new PlotCreator
 
     m_plot_button = new QPushButton(this);
-    m_sidebar->layout()->addWidget(m_eventlog_button);
+    m_plot_button->setMinimumSize(QSize(BUTTON_SIZE, BUTTON_SIZE));
+    m_plot_button->setSizePolicy(QSizePolicy::Minimum, QSizePolicy::Minimum);
+    m_plot_button->setIcon(QIcon(":/icons/plot.png"));
+    m_plot_button->setIconSize(QSize(BUTTON_SIZE, BUTTON_SIZE));
+    m_sidebar->layout()->addWidget(m_plot_button);
     resetSidebar();
 
     m_toolsettings->addPlot();
@@ -136,7 +142,9 @@ void ToolFrame::putContent(QWidget *w)
     w->setSizePolicy(QSizePolicy::MinimumExpanding, QSizePolicy::MinimumExpanding);
     QLayout *layout = m_content->layout();
     layout->addWidget(w);
-    layout->addItem(layout->takeAt(layout->indexOf(m_timer))); // Move stopwatch to the bottom of the layout
+    if (m_usingTimer) {
+        layout->addItem(layout->takeAt(layout->indexOf(m_timer))); // Move stopwatch to the bottom of the layout
+    }
     resize();
 }
 
@@ -149,7 +157,6 @@ void ToolFrame::putSettings(QWidget *w)
 
     QString application_name = windowTitle(); // If it won't save settings, strip the string for white spaces
     m_settings_header->setText(QString("<b>%1 settings</b>").arg(application_name));
-
     m_toolsettings->setContext(context());
     resize();
 }
@@ -286,9 +293,9 @@ void ToolFrame::load_settings()
         if (!graph_enabled.isNull()) {
             if (graph_enabled.toBool()) {
     //            m_graph->setVisible(true);
-                output() << QString("Give me graph");
+                m_plot_button->setVisible(true);
             } else {
-                output() << QString("Remove graph");
+                m_plot_button->setVisible(false);
     //            m_graph->stop();
     //            m_graph->setVisible(false);
             }
@@ -302,10 +309,10 @@ void ToolFrame::load_settings()
         QVariant eventlog_enabled = store().value(QString("toolSettings/eventlogEnabled"));
         if (!eventlog_enabled.isNull()) {
             if (eventlog_enabled.toBool()) {
-                // m_sidebar->eventlog_button->setVisible(true);
+                m_eventlog_button->setVisible(true);
             } else {
-                //m_eventlog->stop(); AND
-                //m_eventlog_button->setVisible(false);
+                //m_eventlog->stop(); expose public function to stop eventlog ticker
+                m_eventlog_button->setVisible(false);
                 m_eventlog->setVisible(false);
             }
         } else {
@@ -406,7 +413,6 @@ ToolSettings::ToolSettings(QWidget *parent) :
 void ToolSettings::setContext(QString context)
 {
     m_store = new QSettings("Lemon", context);
-    connectWidgets();
     loadSettings();
 }
 
@@ -597,20 +603,15 @@ void ToolSettings::saveSettings()
         store()->setValue(QString("toolSettings/timeout"), timeout_edit->text());
     }
 
-
-//    store()->setValue(QString("toolSettings/graphEnabled"), graph_checker->isChecked());
-//    store()->setValue(QString("toolSettings/graphSampling"), graph_sample_edit->text());
+    if (m_usingPlot) {
+        store()->setValue(QString("toolSettings/graphEnabled"), graph_checker->isChecked());
+        store()->setValue(QString("toolSettings/graphSampling"), graph_sample_edit->text());
+    }
 
     if (m_usingEventlog) {
         store()->setValue(QString("toolSettings/eventlogEnabled"), eventlog_checker->isChecked());
         store()->setValue(QString("toolSettings/eventlogSampling"), eventlog_edit->text());
     }
-
 }
 
-void ToolSettings::connectWidgets()
-{
 
-    //connect graph samples
-
-}
