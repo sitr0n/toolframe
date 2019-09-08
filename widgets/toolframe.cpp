@@ -28,7 +28,6 @@ ToolFrame::ToolFrame(QWidget *parent) :
     m_wrapper(new QWidget(this))
 {
     setWindowIcon(QIcon("noicon"));
-    setAttribute(Qt::WA_DeleteOnClose);
     m_start_button->setMinimumSize(QSize(BUTTON_SIZE, BUTTON_SIZE));
     m_start_button->setSizePolicy(QSizePolicy::Minimum, QSizePolicy::Minimum);
     m_start_button->setIcon(QIcon(":/icons/start.png"));
@@ -159,25 +158,6 @@ void ToolFrame::putSettings(QWidget *w)
     m_settings_header->setText(QString("<b>%1 settings</b>").arg(application_name));
     m_toolsettings->setContext(context());
     resize();
-}
-
-void ToolFrame::enable_timer(bool enable)
-{
-    if (enable) {
-        if (m_timer == NULL) {
-            m_timer = new Stopwatch(this);
-            layout()->addWidget(m_timer);
-        } else {
-            m_timer->setVisible(true);
-        }
-    } else {
-        if (m_timer != NULL) {
-            layout()->takeAt(layout()->indexOf(m_timer));
-            delete m_timer;
-        } else {
-            //m_timer->setVisible(false);
-        }
-    }
 }
 
 void ToolFrame::started()
@@ -322,9 +302,8 @@ void ToolFrame::load_settings()
             QVariant sampling = store().value(QString("toolSettings/eventlogSampling"));
             if (!sampling.isNull()) {
                 m_eventlog->setSampleInterval(sampling.toInt());
-                output() << QString("Found sampling: %1").arg(sampling.toInt());
             } else {
-                output() << QString("No settings for elog sampling found");
+                output() << QString("No settings for eventlog sampling found");
             }
         }
     }

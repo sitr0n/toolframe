@@ -15,8 +15,11 @@
 #include <QCheckBox>
 #include <QSettings>
 #include <QSpacerItem>
+#include <QFormLayout>
 
 #define BUTTON_SIZE 45
+#include <QDebug>
+#include <QToolTip>
 
 class SideBar;
 class EventLogger;
@@ -31,7 +34,53 @@ public:
     void useEventlog();
     void putContent(QWidget *w);
     void putSettings(QWidget *w);
-    void enable_timer(bool enable);
+    template<typename Proc>
+    void addField(const QString &description, Proc actuate) {
+        auto w = new QLineEdit(this);
+        auto wrapper = new QWidget(this);
+        auto form = new QFormLayout(wrapper);
+        form->addRow(description, w);
+
+        QLayout *layout = m_settings->layout();
+        layout->addWidget(wrapper);
+        connect(w, &QLineEdit::returnPressed, this,
+                [=](){
+            qDebug() << QString("[%1]").arg(w->text());
+            actuate();
+        });
+    }
+
+    bool isNumber(const QString &item) {
+        QRegExp format("^[+-]?([0-9]+([.][0-9]*)?|[.][0-9]+)$");
+        return format.exactMatch(item);
+    }
+    
+    template<typename Proc>
+    void addNumberField(const QString &description, Proc actuate) {
+        auto w = new QLineEdit(this);
+        auto wrapper = new QWidget(this);
+        auto form = new QFormLayout(wrapper);
+        form->addRow(description, w);
+
+        QLayout *layout = m_settings->layout();
+        layout->addWidget(wrapper);
+        connect(w, &QLineEdit::returnPressed, this,
+                [=](){
+            auto value = w->text();
+            if (!isNumber(value)) {
+                QToolTip::showText(w->mapToGlobal(QPoint(0, 0)), QString("Only digits!"));
+                return;
+            }
+            auto number = value.toDouble();
+            const double MIN_NUMBER = 10000.0;
+            const double MAX_NUMBER = 60000.0;
+            if (number < MIN_NUMBER || MAX_NUMBER < number) {
+                QToolTip::showText(w->mapToGlobal(QPoint(0, 0)), QString("This field expects a value between %1 and %2").arg(MIN_NUMBER).arg(MAX_NUMBER));
+                return;
+            }
+            actuate(value.toInt());
+        });
+    }
 
 signals:
     void timeout();
