@@ -9,13 +9,16 @@
 #include <QToolTip>
 #include <QFormLayout>
 #include <QPushButton>
+#include <QMap>
+#include <QSharedPointer>
 
 class QToolSettings : public QWidget
 {
     Q_OBJECT
 public:
     explicit QToolSettings(QWidget *parent = 0);
-
+    void addTab(const QString &name);
+    QWidget& tab(const QString &name);
     template<typename Proc>
     void addNumberField(const QString &description, Proc actuate) {
 //        auto textField = new QLineEdit(this);
@@ -27,7 +30,7 @@ public:
 //        l->addWidget(wrapper);
 
         auto textField = new QLineEdit(this);
-        m_optionsLayout.addRow(description, textField);
+        m_contentLayout.addRow(description, textField);
 
         connect(textField, &QLineEdit::returnPressed, this,
                 [=](){
@@ -49,12 +52,13 @@ public:
 
 
 private:
-    QFormLayout m_optionsLayout;
-    QHBoxLayout m_buttonLayout;
+    QHBoxLayout m_tabLayout;
+    QFormLayout m_contentLayout;
     QPushButton *m_resetButton;
     QPushButton *m_applyButton;
-    QPushButton *m_clearButton;
+    QPushButton *m_cancelButton;
 
+    QMap<QString, QWidget*> m_tabs;
 
     bool isNumber(const QString &text);
 };
