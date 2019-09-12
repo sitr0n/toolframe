@@ -17,6 +17,8 @@
 #include <QSpacerItem>
 #include <QFormLayout>
 
+#include "qtoolsettings.h"
+
 #define BUTTON_SIZE 45
 #include <QDebug>
 #include <QToolTip>
@@ -28,59 +30,12 @@ class ToolFrame : public QMdiSubWindow
 {
     Q_OBJECT
 public:
-    explicit ToolFrame(QWidget *parent = 0);
+    explicit ToolFrame(QString title, QWidget *parent = 0);
+    /* void injectTool(ToolInterface *tool, const QString &name, QIcon icon = QIcon("noicon")); */ // TODO: Implement
     void useTimer(); // startTimer ?
     void usePlot(); // currently not working
     void useEventlog();
     void putContent(QWidget *w);
-    void putSettings(QWidget *w);
-    template<typename Proc>
-    void addField(const QString &description, Proc actuate) {
-        auto w = new QLineEdit(this);
-        auto wrapper = new QWidget(this);
-        auto form = new QFormLayout(wrapper);
-        form->addRow(description, w);
-
-        QLayout *layout = m_settings->layout();
-        layout->addWidget(wrapper);
-        connect(w, &QLineEdit::returnPressed, this,
-                [=](){
-            qDebug() << QString("[%1]").arg(w->text());
-            actuate();
-        });
-    }
-
-    bool isNumber(const QString &item) {
-        QRegExp format("^[+-]?([0-9]+([.][0-9]*)?|[.][0-9]+)$");
-        return format.exactMatch(item);
-    }
-    
-    template<typename Proc>
-    void addNumberField(const QString &description, Proc actuate) {
-        auto w = new QLineEdit(this);
-        auto wrapper = new QWidget(this);
-        auto form = new QFormLayout(wrapper);
-        form->addRow(description, w);
-
-        QLayout *layout = m_settings->layout();
-        layout->addWidget(wrapper);
-        connect(w, &QLineEdit::returnPressed, this,
-                [=](){
-            auto value = w->text();
-            if (!isNumber(value)) {
-                QToolTip::showText(w->mapToGlobal(QPoint(0, 0)), QString("Only digits!"));
-                return;
-            }
-            auto number = value.toDouble();
-            const double MIN_NUMBER = 10000.0;
-            const double MAX_NUMBER = 60000.0;
-            if (number < MIN_NUMBER || MAX_NUMBER < number) {
-                QToolTip::showText(w->mapToGlobal(QPoint(0, 0)), QString("This field expects a value between %1 and %2").arg(MIN_NUMBER).arg(MAX_NUMBER));
-                return;
-            }
-            actuate(value.toInt());
-        });
-    }
 
 signals:
     void timeout();
@@ -101,16 +56,15 @@ private slots:
     void show_content();
     void show_settings();
     void toggle_eventlog();
-    void load_settings();
 
 protected:
     QTextStream &output() const;
-    QSettings &store() const; // Maybe store the referenced member in m_settings instead of m_toolsettings (since its used for all settings)
+    QToolSettings &settings() const;
 
 private:
+    QToolSettings *m_qtoolsettings;
     bool m_usingTimer;
     bool m_usingPlot;
-    bool m_usingEventlog;
 
     QPushButton *m_start_button;
     QPushButton *m_settings_button;
@@ -127,7 +81,6 @@ private:
     Stopwatch *m_timer;
     QWidget *m_settings;
     QLabel *m_settings_header;
-    ToolSettings *m_toolsettings;
     EventLogger *m_eventlog;
     QWidget *m_wrapper;
 
@@ -150,49 +103,6 @@ private:
     QTextStream &stream;
 
     void print(QString line);
-};
-
-class ToolSettings : public QWidget
-{
-    Q_OBJECT
-public:
-    explicit ToolSettings(QWidget *parent = 0);
-    void setContext(QString context);
-    void addTimer();
-    void addPlot();
-    void addEventlog();
-    QSettings *store() const;
-
-signals:
-    void first_time_setup();
-    void update_frame();
-
-private slots:
-    void update_form();
-    void set_timeout();
-    void set_eventlog_sampling();
-
-private:
-    QFrame *timeout_line;
-    QCheckBox *timeout_checker;
-    QLineEdit *timeout_edit;
-    QFrame *graph_line;
-    QCheckBox *graph_checker;
-    QLineEdit *graph_sample_edit;
-    QFrame *eventlog_line;
-    QCheckBox *eventlog_checker;
-    QLineEdit *eventlog_edit;
-
-    QSettings *m_store;
-
-    bool m_usingTimer;
-    bool m_usingPlot;
-    bool m_usingEventlog;
-
-    QFrame *separator();
-
-    void loadSettings(); // break into one loader for each widget
-    void saveSettings(); // break into one saver for each widget
 };
 
 #endif // TOOLFRAME_H

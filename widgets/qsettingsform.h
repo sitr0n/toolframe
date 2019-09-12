@@ -4,8 +4,8 @@
 #include <QFormLayout>
 #include <QLineEdit>
 #include <QPushButton>
-#include <QToolTip>
 #include <QSettings>
+#include <QMap>
 
 class QSettingsForm : public QWidget
 {
@@ -13,51 +13,63 @@ class QSettingsForm : public QWidget
 public:
     explicit QSettingsForm(QString title = QString(), QWidget *parent = nullptr);
     template<typename Proc>
-    void addNumberField(const QString &info, const double lowerLimit, const double upperLimit, Proc process) {
-        //auto form = static_cast<QFormLayout>(layout());
-        auto textField = new QLineEdit(this);
-        m_formLayout.addRow(info, textField);
+    void addNumberField(const QString &name, const double lowerLimit, const double upperLimit, const double defaultValue, Proc process) {
+        m_fields.insert(name, new QLineEdit(this));
+        m_defaults.insert(name, defaultValue);
+        m_formLayout.addRow(name, m_fields.value(name));
+        loadValue(name);
+        process(m_fields.value(name)->text().toDouble());
 
         connect(m_applyButton, &QPushButton::clicked, this,
                 [=](){
             bool convertable;
-            auto number = textField->text().toDouble(&convertable);
+            auto number = m_fields.value(name)->text().toDouble(&convertable);
             if (!convertable) {
-                QToolTip::showText(textField->mapToGlobal(QPoint(0, 0)), QString("Enter a numeric value"));
+                information(name, QString("Enter a numeric value"));
                 return;
             }
             if (number < lowerLimit || upperLimit < number) {
-                QToolTip::showText(textField->mapToGlobal(QPoint(0, 0)), QString("Enter a value between %1 and %2").arg(lowerLimit).arg(upperLimit));
+                information(name, QString("Enter a value between %1 and %2").arg(lowerLimit).arg(upperLimit));
                 return;
             }
-            // save first or after?
             process(number);
-            m_applyButton->setEnabled(false); // will this even work
-            m_applyButton->setCheckable(false);
+            saveValue(name);
+            m_applyButton->setEnabled(false);
         });
 
-        connect(textField, &QLineEdit::textChanged, this,
+        connect(m_fields.value(name), &QLineEdit::textChanged, this,
                 [=](){
-            m_unsavedChanges = true;
+            m_fields.value(name)->setStyleSheet(BLACK_TEXT);
             m_applyButton->setEnabled(true);
-            m_applyButton->setCheckable(true);
         });
     }
 
-    void setDefault(const QString &name, const double value);
+    void addSeparator();
+    void setPlaceholder(const QString &name, const QString &text);
+
 
 signals:
-    void trigger();
+    void feedback(const QString &message);
 
-protected slots:
-    void loadOptions(const QString &name);
+protected:
+    void loadValue(const QString &name);
+    void saveValue(const QString &name);
+    void information(const QString &name, const QString &message);
+    void resetFields();
+
+    QFrame *separator();
 
 private:
     QString m_title;
-    bool m_unsavedChanges;
     QFormLayout m_formLayout;
     QPushButton *m_resetButton;
     QPushButton *m_applyButton;
     QPushButton *m_cancelButton;
 
+    QMap<QString, QLineEdit*> m_fields;
+    QMap<QString, double> m_defaults;
+
+    const int BUTTON_SPACING = 4;
+    const QString RED_TEXT = "color: #FF0000";
+    const QString BLACK_TEXT = "color: #000000";
 };
