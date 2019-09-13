@@ -3,35 +3,28 @@
 
 #include <QMdiSubWindow>
 #include <QWidget>
-#include <QPlainTextEdit>
 #include <QTextStream>
 #include "stopwatch.h"
 #include <QTimer>
 #include <QPushButton>
 #include "statusbitwidget.h"
 #include <QLabel>
-#include <QLineEdit>
-#include <QSpinBox>
-#include <QCheckBox>
-#include <QSettings>
 #include <QSpacerItem>
-#include <QFormLayout>
+#include <QPlainTextEdit>
 
 #include "qtoolsettings.h"
+#include "qterminal.h"
 
 #define BUTTON_SIZE 45
 #include <QDebug>
-#include <QToolTip>
 
 class SideBar;
-class EventLogger;
-class ToolSettings;
 class ToolFrame : public QMdiSubWindow
 {
     Q_OBJECT
 public:
     explicit ToolFrame(QString title, QWidget *parent = 0);
-    /* void injectTool(ToolInterface *tool, const QString &name, QIcon icon = QIcon("noicon")); */ // TODO: Implement
+    /* void addTool(ToolInterface *tool, const QString &name, QIcon icon = QIcon("noicon")); */ // TODO: Implement
     void useTimer(); // startTimer ?
     void usePlot(); // currently not working
     void useEventlog();
@@ -58,11 +51,12 @@ private slots:
     void toggle_eventlog();
 
 protected:
-    QTextStream &output() const;
     QToolSettings &settings() const;
+    QTerminal &terminal();
 
 private:
     QToolSettings *m_qtoolsettings;
+    QTerminal m_terminal;
     bool m_usingTimer;
     bool m_usingPlot;
 
@@ -81,28 +75,11 @@ private:
     Stopwatch *m_timer;
     QWidget *m_settings;
     QLabel *m_settings_header;
-    EventLogger *m_eventlog;
     QWidget *m_wrapper;
 
     QString context();
     void resetSidebar();
 };
 
-class EventLogger : public QPlainTextEdit
-{
-    Q_OBJECT
-public:
-    explicit EventLogger(QTextStream &events, QWidget *parent = 0);
-    void setSampleInterval(int interval);
-
-private slots:
-    void poll_stream();
-
-private:
-    QTimer ticker;
-    QTextStream &stream;
-
-    void print(QString line);
-};
 
 #endif // TOOLFRAME_H

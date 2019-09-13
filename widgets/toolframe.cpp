@@ -19,7 +19,6 @@ ToolFrame::ToolFrame(QString title, QWidget *parent)
     , m_settings_button(new QPushButton(this))
     , sidebar_separator(new QSpacerItem(0, 0, QSizePolicy::Minimum, QSizePolicy::MinimumExpanding))
     , m_status_led(new StatusBitWidget(this))
-    , eventlog(new QTextStream(&logbuffer))
     , m_sidebar(new QWidget(this))
     , m_content(new QWidget(this))
     , m_settings(new QWidget(this))
@@ -114,8 +113,7 @@ void ToolFrame::usePlot()
 
 void ToolFrame::useEventlog()
 {
-    m_eventlog = new EventLogger(*eventlog, this);
-    m_wrapper->layout()->addWidget(m_eventlog);
+    m_wrapper->layout()->addWidget(&m_terminal);
 
     m_eventlog_button = new QPushButton(this);
     m_eventlog_button->setMinimumSize(QSize(BUTTON_SIZE, BUTTON_SIZE));
@@ -126,11 +124,12 @@ void ToolFrame::useEventlog()
     resetSidebar();
 
     auto general = settings().addTab("General");
+    general->addLabel("<b>Terminal</b>");
+    general->addCheckBox("Timestamps", [=](const bool enable){m_terminal.timestamp(enable);});
     general->addNumberField("Eventlog sampling", 0, 1000, 100,
     [=](double sampling){
-        m_eventlog->setSampleInterval(static_cast<int>(sampling));
+        //m_eventlog->setSampleInterval(static_cast<int>(sampling));
     });
-
     //m_toolsettings->addEventlog();
 
     connect(m_eventlog_button, SIGNAL(clicked(bool)), this, SLOT(toggle_eventlog()));
@@ -223,23 +222,22 @@ void ToolFrame::show_settings()
 
 void ToolFrame::toggle_eventlog()
 {
-    if (m_eventlog->isVisible()) {
-        m_eventlog->setVisible(false);
+    if (m_terminal.isVisible()) {
+        m_terminal.setVisible(false);
     } else {
-        m_eventlog->setVisible(true);
+        m_terminal.setVisible(true);
     }
     resize();
 }
 
-QTextStream &ToolFrame::output() const
-{
-    return *eventlog;
-}
-
-
 QToolSettings &ToolFrame::settings() const
 {
     return *m_qtoolsettings;
+}
+
+QTerminal &ToolFrame::terminal()
+{
+    return m_terminal;
 }
 
 QString ToolFrame::context()
@@ -257,50 +255,6 @@ void ToolFrame::resetSidebar()
     layout->addItem(sidebar_separator);
     layout->addWidget(m_status_led);
 }
-
-EventLogger::EventLogger(QTextStream &events, QWidget *parent) :
-    QPlainTextEdit(parent),
-    stream(events)
-{
-    this->setSizePolicy(QSizePolicy::MinimumExpanding, QSizePolicy::MinimumExpanding);
-    this->setMinimumHeight(BUTTON_SIZE);
-    document()->setMaximumBlockCount(100);
-    QPalette p = palette();
-    p.setColor(QPalette::Base, Qt::black);
-    p.setColor(QPalette::Text, Qt::green);
-    setPalette(p);
-    setReadOnly(true);
-    insertPlainText(QString("[%1] Application opened").arg(QTime::currentTime().toString(QString("hh:mm:ss"))));
-
-    connect(&ticker, SIGNAL(timeout()), this, SLOT(poll_stream()));
-    setSampleInterval(1000);
-    ticker.start();
-}
-
-void EventLogger::setSampleInterval(int interval)
-{
-    ticker.setInterval(interval);
-}
-
-void EventLogger::print(QString line)
-{
-    QTextCursor cursor = textCursor();
-    cursor.setPosition(this->document()->characterCount() - 1);
-    setTextCursor(cursor);
-    insertPlainText(QString("\n[%1] %2").arg(QTime::currentTime().toString(QString("hh:mm:ss"))).arg(line));
-
-    QScrollBar *bar = verticalScrollBar();
-    bar->setValue(bar->maximum());
-}
-
-void EventLogger::poll_stream()
-{
-    QString line = stream.readLine();
-    if (!line.isNull()) {
-        print(line);
-    }
-}
-
 
 //void ToolSettings::set_timeout()
 //{

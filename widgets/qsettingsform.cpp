@@ -1,8 +1,9 @@
 #include "qsettingsform.h"
-#include <QFrame>
 #include <QVBoxLayout>
 #include <QHBoxLayout>
 #include <QSpacerItem>
+#include <QFrame>
+#include <QLabel>
 #include <QMessageBox>
 #include <QToolTip>
 
@@ -60,6 +61,11 @@ QSettingsForm::QSettingsForm(QString title, QWidget *parent)
     });
 }
 
+void QSettingsForm::addLabel(const QString &text)
+{
+    m_formLayout.addRow(new QLabel(text, this));
+}
+
 void QSettingsForm::addSeparator()
 {
     m_formLayout.addRow(separator());
@@ -87,14 +93,14 @@ void QSettingsForm::saveValue(const QString &name)
 void QSettingsForm::information(const QString &name, const QString &message)
 {
     m_fields.value(name)->setStyleSheet(RED_TEXT);
-    QToolTip::showText(m_fields.value(name)->mapToGlobal(QPoint(0, -8)), message);
+    QToolTip::showText(m_fields.value(name)->mapToGlobal(QPoint(0, -12)), message);
 }
 
 void QSettingsForm::resetFields()
 {
     for (const auto& name: m_fields.keys()) {
         auto value = m_defaults.value(name);
-        m_fields.value(name)->setText(QString::number(value));
+        m_fields.value(name)->setText(value.toString());
         saveValue(name);
         m_fields.value(name)->setStyleSheet(BLACK_TEXT);
     }

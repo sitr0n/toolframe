@@ -17,7 +17,7 @@ class QToolSettings : public QWidget
 {
     Q_OBJECT
 public:
-    explicit QToolSettings(QString title = QString(), QWidget *parent = 0);
+    explicit QToolSettings(QString title = QString(), QWidget *parent = nullptr);
     QSettingsForm *addTab(const QString &name);
     QSettingsForm &tab(const QString &name);
 
