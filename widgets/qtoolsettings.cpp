@@ -1,7 +1,6 @@
 #include "qtoolsettings.h"
 #include <QFormLayout>
 #include <QToolTip>
-#include <QLabel>
 #include <QDebug>
 
 QToolSettings::QToolSettings(QString title, QWidget *parent)
@@ -11,7 +10,10 @@ QToolSettings::QToolSettings(QString title, QWidget *parent)
     , m_contentLayout(new QHBoxLayout())
 {
     setLayout(new QVBoxLayout(this));
-    layout()->addWidget(new QLabel("Settings"));
+    m_header.setSizePolicy(QSizePolicy::MinimumExpanding, QSizePolicy::Minimum);
+    m_header.setMinimumHeight(28);
+    m_header.setAlignment(Qt::AlignCenter);
+    layout()->addWidget(&m_header);
 
     auto tabs = new QWidget(this);
     tabs->setLayout(m_tabLayout);
@@ -59,6 +61,13 @@ void QToolSettings::display(const QString &name)
         i.value()->setVisible(false);
     }
     m_forms.value(name)->setVisible(true);
+
+    setHeader(name);
+}
+
+void QToolSettings::setHeader(const QString &title)
+{
+    m_header.setText(QString("<b>%0 settings</b>").arg(title));
 }
 
 

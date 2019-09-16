@@ -9,6 +9,7 @@
 #include <QScrollBar>
 #include <QRegExp>
 #include <QToolTip>
+#define BUTTON_SIZE 45
 
 ToolFrame::ToolFrame(QString title, QWidget *parent)
     : QMdiSubWindow(parent)
@@ -125,12 +126,10 @@ void ToolFrame::useEventlog()
 
     auto general = settings().addTab("General");
     general->addLabel("<b>Terminal</b>");
-    general->addCheckBox("Timestamps", [=](const bool enable){m_terminal.timestamp(enable);});
-    general->addNumberField("Eventlog sampling", 0, 1000, 100,
-    [=](double sampling){
-        //m_eventlog->setSampleInterval(static_cast<int>(sampling));
+    general->addPathField("Log file directory", [=](const QString &path){
+        terminal().print(QString("Log file directory: %0").arg(path));
     });
-    //m_toolsettings->addEventlog();
+    general->addCheckBox("Enable timestamps", [=](const bool enable){m_terminal.timestamp(enable);});
 
     connect(m_eventlog_button, SIGNAL(clicked(bool)), this, SLOT(toggle_eventlog()));
 }
@@ -191,7 +190,8 @@ void ToolFrame::resize()
 {
     if (!QMdiSubWindow::isMaximized()) {
         QApplication::processEvents(QEventLoop::ExcludeUserInputEvents);
-        QMdiSubWindow::resize(sizeHint());
+        QMdiSubWindow::resize(sizeHint().width(), size().height());
+        //QMdiSubWindow::resize(sizeHint());
     }
 }
 

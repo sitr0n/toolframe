@@ -33,7 +33,7 @@ QSettingsForm::QSettingsForm(QString title, QWidget *parent)
     connect(m_resetButton, &QPushButton::clicked, this,
             [=](){
         QMessageBox popup;
-        popup.setText("<b>Settings will be reset to default values.</b>");
+        popup.setText(QString("<b>%0 will be reset to default values.</b>").arg(m_title));
         popup.setInformativeText("Are you sure you want to continue?");
         popup.setStandardButtons(QMessageBox::Yes | QMessageBox::Cancel);
         popup.setDefaultButton(QMessageBox::Cancel);
@@ -49,6 +49,11 @@ QSettingsForm::QSettingsForm(QString title, QWidget *parent)
             emit feedback(QString("%0 reset was cancelled by user.").arg(m_title));
             break;
         }
+    });
+
+    connect(m_applyButton, &QPushButton::clicked, this,
+            [=](){
+        m_applyButton->setEnabled(false);
     });
 
     connect(m_cancelButton, &QPushButton::clicked, this,
@@ -90,10 +95,19 @@ void QSettingsForm::saveValue(const QString &name)
     settings.setValue(name, value);
 }
 
+QString QSettingsForm::formatPath(const QString &path)
+{
+    auto result = (path.at(path.size() - 1) == '/') ? path : path + '/';
+    if (result.at(0) == '~') {
+        result.replace(0, 1, QString::fromUtf8(std::getenv("HOME")));
+    }
+    return result;
+}
+
 void QSettingsForm::information(const QString &name, const QString &message)
 {
     m_fields.value(name)->setStyleSheet(RED_TEXT);
-    QToolTip::showText(m_fields.value(name)->mapToGlobal(QPoint(0, -12)), message);
+    QToolTip::showText(m_fields.value(name)->mapToGlobal(QPoint(0, TOOLTIP_OFFSET)), message);
 }
 
 void QSettingsForm::resetFields()

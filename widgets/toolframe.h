@@ -2,23 +2,17 @@
 #define TOOLFRAME_H
 
 #include <QMdiSubWindow>
-#include <QWidget>
-#include <QTextStream>
 #include "stopwatch.h"
-#include <QTimer>
 #include <QPushButton>
 #include "statusbitwidget.h"
 #include <QLabel>
 #include <QSpacerItem>
-#include <QPlainTextEdit>
 
 #include "qtoolsettings.h"
 #include "qterminal.h"
 
-#define BUTTON_SIZE 45
 #include <QDebug>
 
-class SideBar;
 class ToolFrame : public QMdiSubWindow
 {
     Q_OBJECT
@@ -67,8 +61,6 @@ private:
     QSpacerItem *sidebar_separator;
     StatusBitWidget *m_status_led;
 
-    QString logbuffer;
-    QTextStream *eventlog;
 
     QWidget *m_sidebar;
     QWidget *m_content;

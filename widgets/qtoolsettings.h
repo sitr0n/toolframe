@@ -10,7 +10,7 @@
 #include <QFormLayout>
 #include <QPushButton>
 #include <QMap>
-#include <QSharedPointer>
+#include <QLabel>
 #include "qsettingsform.h"
 
 class QToolSettings : public QWidget
@@ -26,9 +26,11 @@ signals:
 
 protected:
     void display(const QString &name);
+    void setHeader(const QString &title);
 
 private:
     QString m_title;
+    QLabel m_header;
     QHBoxLayout *m_tabLayout;
     QHBoxLayout *m_contentLayout;
 
