@@ -1,24 +1,28 @@
 #ifndef TOOLFRAME_H
 #define TOOLFRAME_H
 
-#include <QMdiSubWindow>
+#include <QtWidgets/QMdiSubWindow>
 #include "stopwatch.h"
-#include <QPushButton>
+#include <QtWidgets/QPushButton>
 #include "statusbitwidget.h"
-#include <QLabel>
-#include <QSpacerItem>
+#include <QtWidgets/QLabel>
+#include <QtWidgets/QSpacerItem>
 
 #include "qtoolsettings.h"
 #include "qterminal.h"
 
 #include <QDebug>
+#include <vector>
+#include <QMap>
+#include <QVBoxLayout>
+#include <QHBoxLayout>
 
 class ToolFrame : public QMdiSubWindow
 {
     Q_OBJECT
 public:
     explicit ToolFrame(QString title, QWidget *parent = 0);
-    /* void addTool(ToolInterface *tool, const QString &name, QIcon icon = QIcon("noicon")); */ // TODO: Implement
+    void addTool(QWidget *tool, const QString &name, QIcon icon = QIcon(), Qt::Alignment align = Qt::AlignCenter); // TODO: Implement
     void useTimer(); // startTimer ?
     void usePlot(); // currently not working
     void useEventlog();
@@ -48,7 +52,17 @@ protected:
     QToolSettings &settings() const;
     QTerminal &terminal();
 
+
 private:
+    void display(const QString &tool);
+    void toggle(const QString &tool);
+
+    QMap<QString, QWidget*> m_tools;
+    QHBoxLayout m_centerLayout;
+    QHBoxLayout m_horizontalLayout;
+    QVBoxLayout m_verticalLayout;
+
+
     QToolSettings *m_qtoolsettings;
     QTerminal m_terminal;
     bool m_usingTimer;
@@ -69,7 +83,6 @@ private:
     QLabel *m_settings_header;
     QWidget *m_wrapper;
 
-    QString context();
     void resetSidebar();
 };
 

@@ -1,14 +1,13 @@
 #include "toolframe.h"
-#include <QSpacerItem>
-#include <QVBoxLayout>
-#include <QHBoxLayout>
-#include <QFormLayout>
-#include <QLabel>
+#include <QtWidgets/QSpacerItem>
+#include <QtWidgets/QVBoxLayout>
+#include <QtWidgets/QHBoxLayout>
+#include <QtWidgets/QFormLayout>
+#include <QtWidgets/QLabel>
 #include <QDebug>
-#include <QApplication>
-#include <QScrollBar>
-#include <QRegExp>
-#include <QToolTip>
+#include <QtWidgets/QApplication>
+
+#include <QStyle>
 #define BUTTON_SIZE 45
 
 ToolFrame::ToolFrame(QString title, QWidget *parent)
@@ -30,13 +29,15 @@ ToolFrame::ToolFrame(QString title, QWidget *parent)
 
     m_start_button->setMinimumSize(QSize(BUTTON_SIZE, BUTTON_SIZE));
     m_start_button->setSizePolicy(QSizePolicy::Minimum, QSizePolicy::Minimum);
-    m_start_button->setIcon(QIcon(":/icons/start.png"));
-    m_start_button->setIconSize(QSize(BUTTON_SIZE/2, BUTTON_SIZE/2));
+    m_start_button->setIcon(style()->standardIcon(QStyle::SP_MediaPlay));
+    m_start_button->setIconSize(QSize(BUTTON_SIZE*2/3, BUTTON_SIZE*2/3));
+    m_start_button->setFocusPolicy(Qt::TabFocus);
 
     m_settings_button->setMinimumSize(QSize(BUTTON_SIZE, BUTTON_SIZE));
     m_settings_button->setSizePolicy(QSizePolicy::Minimum, QSizePolicy::Minimum);
-    m_settings_button->setIcon(QIcon(":/icons/settings.png"));
+    m_settings_button->setIcon(style()->standardIcon(QStyle::SP_FileDialogDetailedView));
     m_settings_button->setIconSize(QSize(BUTTON_SIZE/2, BUTTON_SIZE/2));
+    m_settings_button->setFocusPolicy(Qt::TabFocus);
 
     m_status_led->setFixedSize(QSize(BUTTON_SIZE, BUTTON_SIZE));
     m_status_led->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
@@ -70,6 +71,42 @@ ToolFrame::ToolFrame(QString title, QWidget *parent)
     //connect(m_toolsettings, SIGNAL(update_frame()), this, SLOT(load_settings()));
 
     resize();
+}
+
+void ToolFrame::addTool(QWidget *tool, const QString &name, QIcon icon, Qt::Alignment align)
+{
+    switch (align) {
+    case Qt::AlignCenter:
+        m_centerLayout.addWidget(tool);
+        break;
+    case Qt::AlignLeft:
+        m_horizontalLayout.insertWidget(0, tool);
+        break;
+    case Qt::AlignTop:
+        m_verticalLayout.insertWidget(0, tool);
+        break;
+    case Qt::AlignRight:
+        m_horizontalLayout.addWidget(tool);
+        break;
+    case Qt::AlignBottom:
+        m_verticalLayout.addWidget(tool);
+        break;
+    default:
+        m_terminal.print(QString("ToolFrame::addTool(%0) received unexpected alignment value: %1").arg(name).arg(align));
+        return;
+    }
+
+    m_tools.insert(name, tool);
+
+//     m_sidebar->addButton(name, [&](){
+//       if (align == Qt::AlignCenter) {
+//           display(tools.value(name));
+//       } else {
+//           toggle(tools.value(name));
+//       }
+
+//     }
+//     , icon);
 }
 
 void ToolFrame::useTimer()
@@ -119,7 +156,7 @@ void ToolFrame::useEventlog()
     m_eventlog_button = new QPushButton(this);
     m_eventlog_button->setMinimumSize(QSize(BUTTON_SIZE, BUTTON_SIZE));
     m_eventlog_button->setSizePolicy(QSizePolicy::Minimum, QSizePolicy::Minimum);
-    m_eventlog_button->setIcon(QIcon(":/icons/eventlog.png"));
+    m_eventlog_button->setIcon(style()->standardIcon(QStyle::SP_ComputerIcon));
     m_eventlog_button->setIconSize(QSize(BUTTON_SIZE/2, BUTTON_SIZE/2));
     m_sidebar->layout()->addWidget(m_eventlog_button);
     resetSidebar();
@@ -240,10 +277,14 @@ QTerminal &ToolFrame::terminal()
     return m_terminal;
 }
 
-QString ToolFrame::context()
+void ToolFrame::display(const QString &tool)
 {
-    QRegExp space("\\s");
-    return QString(windowTitle().simplified().remove(space));
+
+}
+
+void ToolFrame::toggle(const QString &tool)
+{
+    m_tools.value(tool)->setVisible(!m_tools.value(tool)->isVisible());
 }
 
 void ToolFrame::resetSidebar()
