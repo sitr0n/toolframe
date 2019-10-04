@@ -6,6 +6,9 @@
 QButtonBar::QButtonBar(QWidget *parent)
     : QWidget(parent)
     , m_orientation(Qt::Orientation())
+    , m_buttonSize(QSize())
+    , m_dependentLayout(new QHBoxLayout())
+    , m_independentLayout(new QHBoxLayout())
 {
     setOrientation(Qt::Horizontal);
 }
@@ -19,11 +22,19 @@ void QButtonBar::setOrientation(Qt::Orientation orientation)
     case Qt::Horizontal:
         delete layout();
         setLayout(new QHBoxLayout());
+        delete m_dependentLayout;
+        m_dependentLayout = new QHBoxLayout();
+        delete m_independentLayout;
+        m_independentLayout = new QHBoxLayout();
         setSizePolicy(QSizePolicy::MinimumExpanding, QSizePolicy::Minimum);
         break;
     case Qt::Vertical:
         delete layout();
         setLayout(new QVBoxLayout());
+        delete m_dependentLayout;
+        m_dependentLayout = new QHBoxLayout();
+        delete m_independentLayout;
+        m_independentLayout = new QHBoxLayout();
         setSizePolicy(QSizePolicy::Minimum, QSizePolicy::MinimumExpanding);
         break;
     default:
@@ -34,10 +45,16 @@ void QButtonBar::setOrientation(Qt::Orientation orientation)
     m_orientation = orientation;
 }
 
+void QButtonBar::setButtonSize(QSize size)
+{
+    m_buttonSize = size;
+}
+
 QPushButton *QButtonBar::createButton(const QString &name, QIcon icon)
 {
     auto button = new QPushButton(this);
-    button->setFocusPolicy(Qt::TabFocus);
+    button->setFocusPolicy(Qt::NoFocus);
+    //button->setFocus();
     button->setMinimumSize(QSize(BTN_SIZE, BTN_SIZE));
     button->setToolTip(name);
     if (icon.isNull()) {
@@ -51,6 +68,17 @@ QPushButton *QButtonBar::createButton(const QString &name, QIcon icon)
 
 void QButtonBar::fillLayout()
 {
+    switch (m_orientation) {
+    case Qt::Horizontal:
+        //q_objectcast<QHBoxLayout*>
+        break;
+    case Qt::Vertical:
+
+        break;
+    default:
+        emit error("QButtonBar has an unknown orientation!");
+        return;
+    }
     for (const auto& item : m_items) {
         layout()->addWidget(item);
     }
@@ -64,10 +92,5 @@ void QButtonBar::highlight(const QString &button)
     }
     m_dependentButtons.value(button)->setStyleSheet(ACTIVE_BUTTONSTYLE);
     m_highlighted = button;
-}
-
-void QButtonBar::toggle(const QString &button)
-{
-    Q_UNUSED(button)
 }
 

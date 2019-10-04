@@ -17,6 +17,7 @@ class QButtonBar : public QWidget
 public:
     explicit QButtonBar(QWidget *parent = nullptr);
     void setOrientation(Qt::Orientation orientation);
+    void setButtonSize(QSize size);
     template <typename Proc>
     void addExclusiveButton(const QString &name, Proc process, QIcon icon = QIcon()) {
         auto button = createButton(name, icon);
@@ -53,17 +54,19 @@ protected:
     QPushButton* createButton(const QString &name, QIcon icon);
     void fillLayout();
     void highlight(const QString &button);
-    void toggle(const QString &button);
 
 signals:
     void error(const QString &message);
 
 private:
     Qt::Orientation m_orientation;
+    QSize m_buttonSize;
     QString m_highlighted;
     QFrame m_frame;
     QMap<QString, QWidget*> m_dependentButtons;
     QVector<QWidget*> m_items;
+    QLayout *m_dependentLayout;
+    QLayout *m_independentLayout;
 
     const int BTN_SIZE = 45;
     const QString ACTIVE_BUTTONSTYLE = "background-color: #4EDCFF;";
