@@ -10,6 +10,7 @@
 #include <QDebug>
 #include <QFrame>
 #include <QLayout>
+#include <functional>
 
 class QButtonBar : public QWidget
 {
@@ -17,61 +18,28 @@ class QButtonBar : public QWidget
 public:
     explicit QButtonBar(QWidget *parent = nullptr);
     void setOrientation(Qt::Orientation orientation);
-    void setButtonSize(QSize size);
-    template <typename Proc>
-    void addExclusiveButton(const QString &name, Proc process, QIcon icon = QIcon()) {
-        auto button = createButton(name, icon);
-        layout()->addWidget(button);
-        m_dependentButtons.insert(name, button);
-        if (m_dependentButtons.size() == 1) {
-            highlight(name);
-        }
-
-        connect(button, &QPushButton::clicked, this, [this, name, process](){
-            if (QString::compare(name, m_highlighted) != 0) {
-                highlight(name);
-                process();
-            }
-        });
-    }
-    template <typename Proc>
-    void addButton(const QString &name, Proc process, QIcon icon = QIcon()) {
-        auto button = createButton(name, icon);
-        layout()->addWidget(button);
-
-        connect(button, &QPushButton::clicked, this, [process](){
-            process();
-        });
-    }
-
-    void addSpacer() {
-        auto spacer = new QSpacerItem(0,0, QSizePolicy::MinimumExpanding, QSizePolicy::MinimumExpanding);
-        layout()->addItem(spacer);
-        //m_items.push_back(spacer);
-    }
+    void addButtonToFront(const QString &name, std::function<void()> process, QIcon icon = QIcon());
+    void addButtonToBack(const QString &name, std::function<void()> process, QIcon icon = QIcon());
 
 protected:
     QPushButton* createButton(const QString &name, QIcon icon);
+    void addToFront(QWidget *item);
+    void addToBack(QWidget *item);
+    void resetLayout();
+    void newLayout();
     void fillLayout();
-    void highlight(const QString &button);
+
+    QVector<QWidget*> m_items;
 
 signals:
     void error(const QString &message);
 
 private:
     Qt::Orientation m_orientation;
-    QSize m_buttonSize;
-    QString m_highlighted;
-    QFrame m_frame;
-    QMap<QString, QWidget*> m_dependentButtons;
-    QVector<QWidget*> m_items;
-    QLayout *m_dependentLayout;
-    QLayout *m_independentLayout;
+    //QFrame m_frame;
 
     const int BTN_SIZE = 45;
-    const QString ACTIVE_BUTTONSTYLE = "background-color: #4EDCFF;";
-    const QString INACTIVE_BUTTONSTYLE = "";
-
+    const int LAYOUT_MARGIN = 0;
 };
 
 #endif // QBUTTONBAR_H

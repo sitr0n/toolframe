@@ -1,11 +1,6 @@
 #include "toolframe.h"
-#include <QtWidgets/QVBoxLayout>
-#include <QtWidgets/QHBoxLayout>
-#include <QtWidgets/QFormLayout>
-#include <QDebug>
-#include <QtWidgets/QApplication>
 #include <QStyle>
-#define BUTTON_SIZE 45
+#include <QTimer>
 
 ToolFrame::ToolFrame(QString title, QWidget *parent)
     : QMdiSubWindow(parent)
@@ -15,8 +10,7 @@ ToolFrame::ToolFrame(QString title, QWidget *parent)
     setWindowIcon(QIcon("noicon"));
     setWidget(createLayout());
 
-    m_sidebar.setOrientation(Qt::Vertical);
-    addTool(m_qtoolsettings, "Settings", style()->standardIcon(QStyle::SP_FileDialogDetailedView), Qt::AlignCenter);
+    addApplication(m_qtoolsettings, "Settings", style()->standardIcon(QStyle::SP_FileDialogDetailedView));
     addTool(&m_terminal, "Terminal", style()->standardIcon(QStyle::SP_ComputerIcon), Qt::AlignRight);
 
     auto general = settings().addTab("General");
@@ -29,6 +23,17 @@ ToolFrame::ToolFrame(QString title, QWidget *parent)
     });
 
     resize();
+}
+
+void ToolFrame::addApplication(QWidget *tool, const QString &name, QIcon icon)
+{
+    m_centerLayout.addWidget(tool);
+    m_applications.insert(name, tool);
+    m_sidebar.addApplication(name, [this, name](){
+        display(name);
+    },
+    icon);
+    display(name);
 }
 
 void ToolFrame::addTool(QWidget *tool, const QString &name, QIcon icon, Qt::Alignment align)
@@ -55,26 +60,18 @@ void ToolFrame::addTool(QWidget *tool, const QString &name, QIcon icon, Qt::Alig
     }
 
     m_tools.insert(name, tool);
-    if (align == Qt::AlignCenter) {
-        m_sidebar.addExclusiveButton(name, [this, name](){
-            display(name);
-        },
-        icon);
-    } else {
-        m_sidebar.addButton(name, [this, name](){
-            toggle(name);
-        },
-        icon);
-    }
+    m_sidebar.addTool(name, [this, name](){
+        toggle(name);
+    },
+    icon);
 }
 
 void ToolFrame::resize()
 {
-    if (!QMdiSubWindow::isMaximized()) {
-        QApplication::processEvents(QEventLoop::ExcludeUserInputEvents);
-        QMdiSubWindow::resize(sizeHint().width(), size().height());
-        //QMdiSubWindow::resize(sizeHint());
+    if (QMdiSubWindow::isMaximized()) {
+        return;
     }
+    QTimer::singleShot(10, this, [&]{ QMdiSubWindow::resize(sizeHint()); });
 }
 
 QToolSettings &ToolFrame::settings() const
@@ -89,10 +86,10 @@ QTerminal &ToolFrame::terminal()
 
 void ToolFrame::display(const QString &tool)
 {
-    for (const auto& name : m_tools.keys()) {
-        m_tools.value(name)->setVisible(false);
+    for (const auto& name : m_applications.keys()) {
+        m_applications.value(name)->setVisible(false);
     }
-    m_tools.value(tool)->setVisible(true);
+    m_applications.value(tool)->setVisible(true);
     resize();
 }
 
@@ -119,15 +116,4 @@ QWidget *ToolFrame::createLayout()
     wrapper->setLayout(mainLayout);
     return wrapper;
 }
-
-void ToolFrame::resetSidebar()
-{
-//    QLayout *layout = m_sidebar->layout();
-//    int last_item = layout->indexOf(m_status_led); // Use more robust function like length of or something
-//    layout->takeAt(last_item);
-//    layout->takeAt(last_item - 1);
-//    layout->addItem(sidebar_separator);
-//    layout->addWidget(m_status_led);
-}
-
 

@@ -6,7 +6,7 @@
 #include <QHBoxLayout>
 #include <QMap>
 
-#include "qbuttonbar.h"
+#include "qsidebar.h"
 #include "qtoolsettings.h"
 #include "qterminal.h"
 
@@ -17,6 +17,7 @@ public:
     explicit ToolFrame(QString title, QWidget *parent = 0);
 
 protected:
+    void addApplication(QWidget *tool, const QString &name, QIcon icon = QIcon());
     void addTool(QWidget *tool, const QString &name, QIcon icon = QIcon(), Qt::Alignment align = Qt::AlignCenter);
     QToolSettings &settings() const;
     QTerminal &terminal();
@@ -27,6 +28,7 @@ private:
     void toggle(const QString &tool);
     void resize();
 
+    QMap<QString, QWidget*> m_applications;
     QMap<QString, QWidget*> m_tools;
     QHBoxLayout m_centerLayout;
     QHBoxLayout m_horizontalLayout;
@@ -34,9 +36,8 @@ private:
 
     QToolSettings *m_qtoolsettings;
     QTerminal m_terminal;
-    QButtonBar m_sidebar;
+    QSideBar m_sidebar;
 
-    void resetSidebar();
 };
 
 
