@@ -18,6 +18,11 @@ void QStateButton::addState(const QString &name, QIcon *icon)
     }
 }
 
+void QStateButton::addState(const QString &state, std::function<bool ()> process)
+{
+    m_actions.insert(state, process);
+}
+
 void QStateButton::setState(const QString &name)
 {
     int index = 0;
@@ -29,6 +34,14 @@ void QStateButton::setState(const QString &name)
         } else {
             ++index;
         }
+    } // -------------------------------
+    if (!m_queue.contains(name)) {
+        return;
+    }
+    while (m_queue.front != name) {
+        auto state = m_queue.front();
+        m_queue.pop_front();
+        m_queue.push_back(state);
     }
 }
 

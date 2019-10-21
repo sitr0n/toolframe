@@ -18,6 +18,7 @@ class QButtonBar : public QWidget
 public:
     explicit QButtonBar(QWidget *parent = nullptr);
     void setOrientation(Qt::Orientation orientation);
+    void setButtonSize(QSize size);
     void addButtonToFront(const QString &name, std::function<void()> process, QIcon icon = QIcon());
     void addButtonToBack(const QString &name, std::function<void()> process, QIcon icon = QIcon());
 
@@ -36,9 +37,8 @@ signals:
 
 private:
     Qt::Orientation m_orientation;
-    //QFrame m_frame;
+    QSize m_size;
 
-    const int BTN_SIZE = 45;
     const int LAYOUT_MARGIN = 0;
 };
 

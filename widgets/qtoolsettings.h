@@ -12,6 +12,7 @@
 #include <QMap>
 #include <QLabel>
 #include "qsettingsform.h"
+#include "qselectionbar.h"
 
 class QToolSettings : public QWidget
 {
@@ -34,7 +35,7 @@ private:
     QHBoxLayout *m_tabLayout;
     QHBoxLayout *m_contentLayout;
 
-    QMap<QString, QPushButton*> m_buttons;
+    QSelectionBar m_tabs;
     QMap<QString, QSettingsForm*> m_forms;
 };
 

@@ -14,4 +14,6 @@ protected:
 private:
     QSelectionBar m_applicationBar;
     QButtonBar m_toolBar;
+
+    const int BUTTON_SIZE = 45;
 };

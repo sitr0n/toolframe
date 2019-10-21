@@ -6,6 +6,7 @@
 QButtonBar::QButtonBar(QWidget *parent)
     : QWidget(parent)
     , m_orientation(Qt::Orientation())
+    , m_size(QSize())
 {
     setOrientation(Qt::Horizontal);
 }
@@ -17,6 +18,17 @@ void QButtonBar::setOrientation(Qt::Orientation orientation)
     }
     m_orientation = orientation;
     resetLayout();
+}
+
+void QButtonBar::setButtonSize(QSize size)
+{
+    if (size == m_size) {
+        return;
+    }
+    m_size = size;
+    for (auto& button: m_items) {
+        button->setMinimumSize(m_size);
+    }
 }
 
 void QButtonBar::addButtonToFront(const QString &name, std::function<void ()> process, QIcon icon)
@@ -45,8 +57,10 @@ QPushButton *QButtonBar::createButton(const QString &name, QIcon icon)
 {
     auto button = new QPushButton(this);
     button->setFocusPolicy(Qt::NoFocus);
-    button->setMinimumSize(QSize(BTN_SIZE, BTN_SIZE));
     button->setToolTip(name);
+    if (!m_size.isEmpty()) {
+        button->setMinimumSize(m_size);
+    }
     if (icon.isNull()) {
         button->setText(name);
     } else {

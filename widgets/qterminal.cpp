@@ -1,4 +1,5 @@
 #include "qterminal.h"
+#include "qbuttonbar.h"
 #include <QVBoxLayout>
 #include <QHBoxLayout>
 #include <QPushButton>
@@ -14,34 +15,22 @@ QTerminal::QTerminal(QWidget *parent)
     setLayout(new QVBoxLayout(this));
     setSizePolicy(QSizePolicy::MinimumExpanding, QSizePolicy::MinimumExpanding);
 
-    auto buttonBar = new QWidget(this);
-    buttonBar->setLayout(new QHBoxLayout);
-    auto saveButton = new QPushButton("Save", this);
-    connect(saveButton, &QPushButton::clicked, this, [=](){});
-    saveButton->setMinimumWidth(BUTTON_WIDTH);
-    saveButton->setSizePolicy(QSizePolicy::MinimumExpanding, QSizePolicy::Minimum);
-    saveButton->setEnabled(false);
-    buttonBar->layout()->addWidget(saveButton);
-    auto copyButton = new QPushButton("Copy", this);
-    connect(copyButton, &QPushButton::clicked, this, [=](){
+    auto button_Bar = new QButtonBar(this);
+    button_Bar->addButtonToBack("Save", [=](){d
+
+    });
+    button_Bar->addButtonToBack("Copy", [this](){
         auto scrollPosition = m_terminal.verticalScrollBar()->value();
         m_terminal.selectAll();
         m_terminal.copy();
         m_terminal.moveCursor(QTextCursor::End);
         m_terminal.verticalScrollBar()->setValue(scrollPosition);
     });
-    copyButton->setMinimumWidth(BUTTON_WIDTH);
-    copyButton->setSizePolicy(QSizePolicy::MinimumExpanding, QSizePolicy::Minimum);
-    buttonBar->layout()->addWidget(copyButton);
-    auto clearButton = new QPushButton("Clear", this);
-    connect(clearButton, &QPushButton::clicked, this, [=](){
+    button_Bar->addButtonToBack("Clear", [this](){
         m_terminal.clear();
     });
-    clearButton->setMinimumWidth(BUTTON_WIDTH);
-    clearButton->setSizePolicy(QSizePolicy::MinimumExpanding, QSizePolicy::Minimum);
-    buttonBar->layout()->addWidget(clearButton);
 
-    layout()->addWidget(buttonBar);
+    layout()->addWidget(button_Bar);
     layout()->addWidget(&m_terminal);
 
     auto bottomBar = new QWidget(this);

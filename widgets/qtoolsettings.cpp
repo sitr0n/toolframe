@@ -14,10 +14,7 @@ QToolSettings::QToolSettings(QString title, QWidget *parent)
     m_header.setMinimumHeight(28);
     m_header.setAlignment(Qt::AlignCenter);
     layout()->addWidget(&m_header);
-
-    auto tabs = new QWidget(this);
-    tabs->setLayout(m_tabLayout);
-    layout()->addWidget(tabs);
+    layout()->addWidget(&m_tabs);
 
     auto content = new QWidget(this);
     content->setLayout(m_contentLayout);
@@ -29,19 +26,13 @@ QSettingsForm *QToolSettings::addTab(const QString &name)
     if (m_forms.contains(name)) {
         return &tab(name);
     }
-    m_buttons.insert(name, new QPushButton(name, this));
-    m_tabLayout->addWidget(m_buttons.value(name));
 
+    m_tabs.addButtonToFront(name, [=]{ display(name); });
     m_forms.insert(name, new QSettingsForm(QString("%0/%1").arg(m_title).arg(name), this));
     m_contentLayout->addWidget(m_forms.value(name));
-    connect(m_forms.value(name), &QSettingsForm::feedback, this, &QToolSettings::feedback);
-
     display(name);
-    connect(m_buttons.value(name), &QPushButton::clicked, this,
-            [=](){
-        display(name);
-    });
 
+    connect(m_forms.value(name), &QSettingsForm::feedback, this, &QToolSettings::feedback);
     return m_forms.value(name);
 }
 

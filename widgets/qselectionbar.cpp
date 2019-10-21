@@ -42,7 +42,9 @@ void QSelectionBar::addButtonToBack(const QString &name, std::function<void ()> 
 void QSelectionBar::highlight(const QString &button)
 {
     for (const auto& name : m_buttons.keys()) {
-        m_buttons.value(name)->setStyleSheet(INACTIVE_BUTTONSTYLE);
+        qDebug() << QString("Checking this name. %0").arg(name);
+        //m_buttons.value(name)->setStyleSheet(INACTIVE_BUTTONSTYLE);
+        m_buttons.value(name)->setStyleSheet("");
     }
     m_buttons.value(button)->setStyleSheet(ACTIVE_BUTTONSTYLE);
     m_highlighted = button;
