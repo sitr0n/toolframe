@@ -31,7 +31,7 @@ private:
     int currentState;
     QMap<QString, std::function<bool()>> m_actions;
     QQueue<QString> m_queue;
-    std::vector<QString> states;
+    std::vector<QString> m_states;
     std::map<QString, std::unique_ptr<QIcon>> icons;
 
     void updateButton();
