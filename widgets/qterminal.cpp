@@ -14,9 +14,10 @@ QTerminal::QTerminal(QWidget *parent)
 {
     setLayout(new QVBoxLayout(this));
     setSizePolicy(QSizePolicy::MinimumExpanding, QSizePolicy::MinimumExpanding);
+    setMinimumWidth(TERMINAL_WIDTH);
 
     auto button_Bar = new QButtonBar(this);
-    button_Bar->addButtonToBack("Save", [=](){d
+    button_Bar->addButtonToBack("Save", [=](){
 
     });
     button_Bar->addButtonToBack("Copy", [this](){
@@ -58,7 +59,6 @@ QTerminal::QTerminal(QWidget *parent)
     p.setColor(QPalette::Text, Qt::green);
     m_terminal.setPalette(p);
     m_terminal.setReadOnly(true);
-    m_terminal.insertPlainText(QString("[%1] Application opened").arg(QTime::currentTime().toString(QString("hh:mm:ss"))));
 
     auto scrollBar = m_terminal.verticalScrollBar();
     connect(scrollBar, &QAbstractSlider::valueChanged, this,
@@ -67,9 +67,38 @@ QTerminal::QTerminal(QWidget *parent)
             m_autoScroll.setChecked(false);
         }
     });
+
+    if (!setMonospaceFont()) {
+        error("Operating system has no monospace fonts available!");
+    }
 }
 
 void QTerminal::print(const QString &message)
+{
+    write(message, Qt::green);
+}
+
+void QTerminal::notify(const QString &message)
+{
+    write(message, Qt::yellow);
+}
+
+void QTerminal::error(const QString &message)
+{
+    write(message, Qt::red);
+}
+
+void QTerminal::timestamp(const bool enable)
+{
+    m_timeStamp = enable;
+}
+
+void QTerminal::setLineCount(const int size)
+{
+    m_terminal.document()->setMaximumBlockCount(size);
+}
+
+void QTerminal::write(const QString &message, QColor color)
 {
     auto output = m_terminal.document()->isEmpty() ? QString("") : QString("\n");
     if (m_timeStamp) {
@@ -79,7 +108,13 @@ void QTerminal::print(const QString &message)
 
     auto scrollPosition = m_terminal.verticalScrollBar()->value();
     m_terminal.moveCursor(QTextCursor::End);
-    m_terminal.insertPlainText(output);
+
+    QTextCursor cursor(m_terminal.textCursor());
+    QTextCharFormat format;
+    format.setFontWeight(QFont::DemiBold);
+    format.setForeground(QBrush(color));
+    cursor.setCharFormat(format);
+    cursor.insertText(output);
 
     if (m_autoScroll.isChecked()) {
         scrollDown();
@@ -92,18 +127,25 @@ void QTerminal::print(const QString &message)
     }
 }
 
-void QTerminal::timestamp(const bool enable)
-{
-    m_timeStamp = enable;
-}
-
-void QTerminal::setRowBuffer(const int size)
-{
-    m_terminal.document()->setMaximumBlockCount(size);
-}
-
 void QTerminal::scrollDown()
 {
     auto bar = m_terminal.verticalScrollBar();
     bar->setValue(bar->maximum());
+}
+
+void QTerminal::updateVerticalPosition()
+{
+
+}
+
+bool QTerminal::setMonospaceFont()
+{
+    QFontDatabase db;
+    for (auto& name : db.families()) {
+        if (db.isFixedPitch(name)) {
+            m_terminal.setFont(QFont(name));
+            return true;
+        }
+    }
+    return false;
 }

@@ -1,8 +1,8 @@
 #pragma once
 
-#include <QWidget>
-#include <QPlainTextEdit>
-#include <QCheckBox>
+#include <QtWidgets/QWidget>
+#include <QtWidgets/QPlainTextEdit>
+#include <QtWidgets/QCheckBox>
 
 class QTerminal : public QWidget
 {
@@ -14,19 +14,23 @@ public:
     void error(const QString &message);
 
     void timestamp(const bool enable);
-    void setRowBuffer(const int size);
+    void setLineCount(const int size);
 
 protected:
+    void write(const QString &message, QColor color);
     void resetCursor();
     void scrollDown();
+    void updateVerticalPosition();
+    bool setMonospaceFont();
 
 private:
     QPlainTextEdit m_terminal;
     QCheckBox m_autoScroll;
     bool m_timeStamp;
 
-    const int BUTTON_WIDTH = 70;
-
     const QString DEFAULT_STYLE = QString("color: transparent");
     const QString NEW_MESSAGE = QString("color: green");
+
+    const int BUTTON_WIDTH = 70;
+    const int TERMINAL_WIDTH = 350;
 };
